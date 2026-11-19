@@ -3,6 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('breathlines', {
   consent: (value) => ipcRenderer.invoke('breathlines:consent', value),
   key: () => ipcRenderer.invoke('breathlines:key'),
+  readiness: (options) => ipcRenderer.invoke('breathlines:readiness', options),
   export: (type, data) =>
     ipcRenderer.invoke('breathlines:export', { type, data }),
 });

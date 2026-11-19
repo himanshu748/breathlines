@@ -30,9 +30,10 @@ vitals or pretends to detect breath without the SDK.
 1. Read the camera consent screen. SDK telemetry starts **off**.
 2. Continue to the API key screen. An environment key is prefilled; pasted keys
    remain in memory only (no local config, keychain, or browser storage).
-3. Enter the desk, then explicitly click **Start camera**. Consent alone does
+3. Enter the desk, then explicitly click **Prepare camera**. Consent alone does
    not acquire the camera. Place your face and upper chest in even light.
-4. Type. Enter intentionally does not insert a line break; pasted newlines are
+4. Choose the camera/rotation, check readiness, and choose a measurement mode.
+   Type. Enter intentionally does not insert a line break; pasted newlines are
    flattened. The SDK's chest waveform provides the breaks. Finished lines are
    immutable; the current line remains editable. There is no manual/simulated
    sensor bypass.
@@ -50,21 +51,22 @@ The app requests `[...breathingMetrics, ...cardioMetrics, ...faceMetrics]`
 from **`@smartspectra/node-sdk` 3.5.0**. Main binds `bindSmartSpectraIpc`;
 the isolated preload requires the official SDK preload; esbuild bundles the
 renderer-safe SDK and `decodeMetrics` from `/messages`. The SDK acquires the
-camera at `start()` and exposes its `streamAvailable` MediaStream for preview.
+camera stream via the browser after explicit preparation; the renderer passes it
+to `useMediaStream()` before `start()` and owns stopping its tracks.
 No microphone is requested or permitted.
 
-| SDK field                               | On the desk                                                                                                                                                                                           |
-| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `breathing.upperTrace`                  | Chest trace; exponential smoothing, relative 15% hysteresis, trough confirmed by a rising edge, 1.3s refractory interval. One break per exhale, not per frame. Confirmation introduces a small delay. |
-| `breathing.lowerTrace`                  | Abdomen trace; used when no new chest samples arrive for 1.5s. Switching source resets the detector to avoid a false break.                                                                           |
-| `face.blinking[].detected`              | Stable detections only. Closure ≥650ms or two completed blinks (each ≥60ms) within 1s requests a stanza. No repeated break during a held blink. SDK sampling/lighting may miss gestures.              |
-| `cardio.pulseRate`                      | Line ink becomes warmer with the estimated pulse; pulse is also recorded in marginalia.                                                                                                               |
-| `breathing.rate`                        | Breaths/min in the live readout and the line's margin.                                                                                                                                                |
-| `cardio.hrv[].rmssd`                    | Shown only after 60s of the current session **and** confidence >0. A longer recording is needed to test HRV.                                                                                          |
-| `face.expression[].scores`              | Highest-confidence expression label at line completion; never interpreted as a psychological diagnosis.                                                                                               |
-| `face.talking`                          | Stable talking/quiet indicator. **This SDK field has no numeric confidence**, so it is explicitly labeled “stable SDK detection,” not assigned a made-up percentage.                                  |
-| `cardio.arterialPressureTrace`          | Live pulse waveform only; no blood pressure values or medical interpretation.                                                                                                                         |
-| `validationStatus` / `processingStatus` | SDK hint text (light, framing, etc.) and session state shown beside the preview.                                                                                                                      |
+| SDK field                                     | On the desk                                                                                                                                                                                           |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `breathing.upperTrace`                        | Chest trace; exponential smoothing, relative 15% hysteresis, trough confirmed by a rising edge, 1.3s refractory interval. One break per exhale, not per frame. Confirmation introduces a small delay. |
+| `breathing.lowerTrace`                        | Abdomen trace; used when no new chest samples arrive for 1.5s. Switching source resets the detector to avoid a false break.                                                                           |
+| `face.landmarks` / `face.blinking[].detected` | Stable 478-point eye geometry drives closure ≥650ms; when unavailable, two blink pulses within 1s request a stanza. No repeated break during a held closure. Camera visibility matters.               |
+| `cardio.pulseRate`                            | Line ink becomes warmer with the estimated pulse; pulse is also recorded in marginalia.                                                                                                               |
+| `breathing.rate`                              | Breaths/min in the live readout and the line's margin.                                                                                                                                                |
+| `cardio.hrv[].rmssd`                          | Shown only after 60s of the current session **and** confidence >0. A longer recording is needed to test HRV.                                                                                          |
+| `face.expression[].scores`                    | Highest-confidence expression label at line completion; never interpreted as a psychological diagnosis.                                                                                               |
+| `face.talking`                                | Stable talking/quiet indicator. **This SDK field has no numeric confidence**, so it is explicitly labeled “stable SDK detection,” not assigned a made-up percentage.                                  |
+| `cardio.arterialPressureTrace`                | Live pulse waveform only; no blood pressure values or medical interpretation.                                                                                                                         |
+| `validationStatus` / `processingStatus`       | SDK hint text (light, framing, etc.) and session state shown beside the preview.                                                                                                                      |
 
 Numeric estimates and expression scores require confidence **>0**. SDK
 confidence percentages (0–100) are normalized internally, never interpreted as
@@ -84,7 +86,7 @@ must still be verified with a real key.
 ## Consent & data handling
 
 - **No covert monitoring.** No camera request on launch, consent, or entering
-  the desk. Start requires both consent and a key. The OS/camera indicator and
+  the desk. Preview requires consent; measurement requires a key too. The OS/camera indicator and
   in-app preview make acquisition visible. Stop stops preview tracks immediately,
   revokes the permission gate, stops/destroys the SDK, and clears live estimates.
 - **Local processing.** SDK camera frames and physiological estimates are
@@ -94,8 +96,7 @@ must still be verified with a real key.
   The unchecked consent toggle passes `enableTelemetry: false`; enabling it
   allows aggregate session summaries (runtime, session shape, performance,
   validation counts/error codes, timestamps), not frames or measured vitals.
-  This app does not run device-readiness checks. If those are added later,
-  telemetry can also include full diagnostic reports with potentially identifying
+  Device-readiness checks can also send full diagnostic reports with potentially identifying
   platform context. Do not describe SDK telemetry as anonymous. See the
   [SDK telemetry & privacy disclosure](https://smartspectra.presagetech.com/docs/telemetry-and-privacy)
   and [Presage terms](https://physiology.presagetech.com/tos).
@@ -120,6 +121,63 @@ must still be verified with a real key.
 and general information only. Not for diagnosis, treatment, monitoring a
 medical condition, or making health decisions. Do not use this app to infer
 someone else's physiology without their informed consent.
+
+## SmartSpectra features used
+
+| SDK feature                                                             | Shipped in                                                                    | Breathlines use                                                                                                                                                                                     |
+| ----------------------------------------------------------------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Device Readiness, `checkDeviceReadiness()`                              | [3.5.0](https://github.com/Presage-Security/SmartSpectra/releases/tag/v3.5.0) | Consent-gated native preflight with verdict/reason and a lighter breathing-only choice.                                                                                                             |
+| `FrameTransform` on supplied input                                      | 3.5.0                                                                         | Upright, clockwise, inverted or counterclockwise camera input; preview matches processing.                                                                                                          |
+| `kSustainedLowFrameRate`                                                | 3.5.0                                                                         | Preserve writing, explain the stop, offer a user-initiated breathing-only restart.                                                                                                                  |
+| Explicit camera discovery/selection                                     | [3.4.0](https://github.com/Presage-Security/SmartSpectra/releases/tag/v3.4.0) | Browser picker selects the renderer stream; native preflight uses `availableCameras()` / `CameraSelection.byId()` only when camera names match uniquely. Browser/native IDs are never interchanged. |
+| Motion/head-direction validation hints                                  | [3.3.0](https://github.com/Presage-Security/SmartSpectra/releases/tag/v3.3.0) | Show the SDK's live framing/lighting guidance.                                                                                                                                                      |
+| Node/Electron integration                                               | [3.2.0](https://github.com/Presage-Security/SmartSpectra/releases/tag/v3.2.0) | Main/preload bridge and renderer SDK. Current `useMediaStream()` and headless `useFile()` APIs are used; their exact first-release versions are not established by those release notes.             |
+| Arterial trace, HRV, expression estimates and confidence                | [3.0.0](https://github.com/Presage-Security/SmartSpectra/releases/tag/v3.0.0) | Pulse waveform, confidence-gated line marginalia, RMSSD after 60s and expression labels.                                                                                                            |
+| Chest/abdomen traces, breathing rate, blinking, talking, face landmarks | Available in 3.5.0; individual introduction versions not established          | Exhale punctuation, double-blink fallback and landmark-derived eyes-closed stanzas.                                                                                                                 |
+
+### Camera preparation and readiness
+
+After consent, enter the desk and click **Prepare camera**. This opens only a
+preview, then enumerates permission-revealed cameras. Select a chest-visible
+webcam and rotation, then **Check readiness**. Measurement does not start until
+you choose full signals or breathing only. A breathing-only choice checks that
+configuration again before starting. Stop camera cancels preparation/checks as
+well as measurement; unfinished writing and finished lines are preserved.
+
+Readiness runs in the main process with the same key, telemetry preference and
+requested metrics. It temporarily releases the browser preview so native capture
+can test the camera. A unique matching native camera name is required: opaque
+browser IDs are not native camera IDs. Unmatched/ambiguous cameras use the SDK's
+custom-input check, which is **inconclusive**, not a pass. Limited/inconclusive
+results show the reason and allow an explicit attempt; blocked results do not
+permit that configuration to start. Rotation applies to renderer measurement;
+native readiness uses the same rotation and requested 1280×720/30fps capture settings;
+the browser may negotiate a different actual resolution/frame rate.
+No API key means no successful authenticated readiness or measurement.
+
+Telemetry remains off by default. If enabled, readiness reports include device,
+camera, performance and free-text diagnostics (potentially file paths), not frames
+or vital signs. Nothing from the check is saved by Breathlines.
+
+### Eyes-closed stanza geometry
+
+The SDK's `js/messages/generated.d.ts`, `ILandmarks` (1138–1153), defines
+`value: IPoint2dFloat[]`, `stable`, `reset`, and epoch-microsecond timestamps.
+The [SDK Face Analysis model card](https://smartspectra.presagetech.com/docs/model-cards-and-limitations.md)
+documents **478 x/y pixel coordinates** and links the
+[MediaPipe numbering diagram](https://storage.googleapis.com/mediapipe-assets/documentation/mediapipe_face_landmark_fullsize.png).
+Thus the layout is documented, not inferred from an unverified live recording.
+
+The application derives eye aspect ratios from the diagram: eye contours
+`33,160,158,133,153,144` and `362,385,387,263,373,380`. The sum of two lid
+distances divided by twice corner distance is scale/rotation invariant. Both
+eyes below 0.18 begin closure; either above 0.22 reopens (hysteresis). Continuous
+stable closure for at least 650ms emits once until reopening. Reset, malformed
+points or a gap over 250ms interrupts the hold; unsupported point counts are
+rejected. Thresholds are application heuristics, not SDK accuracy guarantees.
+When usable landmarks are absent for 1.5s, two blink-detection rising edges
+100–1000ms apart provide the fallback. Blink detections are not assumed to be
+continuous eyelid states. Keyed recordings are still needed to tune this gesture.
 
 ## Tests & development
 

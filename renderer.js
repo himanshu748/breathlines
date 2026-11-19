@@ -2,6 +2,8 @@ const {
   SmartSpectraSDK,
   ProcessingStatus,
   ValidationCode,
+  FrameTransform,
+  SmartSpectraErrorCode,
   breathingMetrics,
   cardioMetrics,
   faceMetrics,
@@ -9,15 +11,19 @@ const {
 const { decodeMetrics } = require('@smartspectra/node-sdk/messages');
 const {
   ExhaleDetector,
-  BlinkDetector,
   marginalia,
   Manuscript,
   timestampMs,
+  EyeClosureDetector,
+  DoubleBlinkDetector,
 } = require('./signals.cjs');
 const $ = (id) => document.getElementById(id);
 const manuscript = new Manuscript();
 let breath = new ExhaleDetector(),
-  blink = new BlinkDetector();
+  blink = new DoubleBlinkDetector(),
+  eyes = new EyeClosureDetector();
+let checking = false;
+let landmarksAt = -Infinity;
 let sdk = null,
   stream = null,
   started = 0,
@@ -210,9 +216,15 @@ function handleMetrics(metrics) {
     manuscript.trace = manuscript.trace.slice(-160);
     if (breath.push(s.value, timestampMs(s.timestamp))) finish();
   }
+  for (const s of metrics.face?.landmarks || []) {
+    const previousTime = eyes.lastTime;
+    if (eyes.push(s, timestampMs(s.timestamp))) finish(true);
+    if (eyes.available && eyes.lastTime > previousTime)
+      landmarksAt = Date.now();
+  }
   for (const s of metrics.face?.blinking || [])
     if (s.stable && blink.push(s.detected, timestampMs(s.timestamp)))
-      finish(true);
+      if (Date.now() - landmarksAt > 1500) finish(true);
   draw('breath-wave', [
     [waves.chest, '#5c795d'],
     [waves.abdomen, '#b28c6a'],
@@ -220,12 +232,134 @@ function handleMetrics(metrics) {
   draw('pulse-wave', [[waves.pulse, '#b17859']]);
 }
 function reportError(code, message) {
+  const lowFps = Number(code) === SmartSpectraErrorCode.kSustainedLowFrameRate;
   $('error').hidden = false;
-  $('error').textContent =
-    Number(code) === 13
+  $('error').textContent = lowFps
+    ? 'Measurement stopped because the camera frame rate stayed too low. Your manuscript is preserved. Close other camera apps, then choose a breathing-only restart when you are ready.'
+    : Number(code) === 13
       ? `Some requested metrics are not authorized by this key. No estimates are invented. Retry with breathing only. (${message})`
       : `Camera session could not continue: ${message}. Stop, check your key and camera, then retry.`;
-  $('fallback').hidden = Number(code) !== 13;
+  $('fallback').hidden = !lowFps && Number(code) !== 13;
+}
+function rotatePreview() {
+  const angle = Number($('rotation').value);
+  $('preview').style.transform =
+    `rotate(${angle}deg) scale(${angle % 180 ? 0.5 : 1})`;
+}
+function selectedTransform() {
+  return {
+    0: FrameTransform.kNone,
+    90: FrameTransform.kRotate90CW,
+    180: FrameTransform.kRotate180,
+    270: FrameTransform.kRotate90CCW,
+  }[$('rotation').value];
+}
+async function openPreview(token) {
+  stream?.getTracks().forEach((track) => track.stop());
+  stream = null;
+  const deviceId = $('camera-picker').value;
+  const next = await navigator.mediaDevices.getUserMedia({
+    audio: false,
+    video: {
+      width: { ideal: 1280 },
+      height: { ideal: 720 },
+      frameRate: { ideal: 30 },
+      ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
+    },
+  });
+  if (token !== generation) {
+    next.getTracks().forEach((track) => track.stop());
+    return;
+  }
+  stream = next;
+  const selected = next.getVideoTracks()[0].getSettings().deviceId;
+  const cameras = (await navigator.mediaDevices.enumerateDevices()).filter(
+    (item) => item.kind === 'videoinput',
+  );
+  if (token !== generation) return;
+  $('camera-picker').replaceChildren(
+    ...cameras.map((camera, index) => {
+      const option = document.createElement('option');
+      option.value = camera.deviceId;
+      option.textContent = camera.label || `Camera ${index + 1}`;
+      return option;
+    }),
+  );
+  $('camera-picker').value = selected || deviceId;
+  $('preview').srcObject = stream;
+  await $('preview').play();
+  if (token !== generation) return;
+  $('preview-empty').hidden = true;
+  $('session-tag').textContent = 'PREVIEW ONLY · CAMERA ON';
+  rotatePreview();
+}
+async function prepare() {
+  if (checking || starting || sdk) return;
+  const token = generation + 1;
+  await stop();
+  if (token !== generation) return;
+  if (!approved) return show('consent');
+  try {
+    await window.breathlines.consent(true);
+    if (token !== generation) return;
+    $('camera-setup').hidden = false;
+    $('measurement-options').hidden = true;
+    $('readiness-result').textContent =
+      'Preview your framing, then check readiness.';
+    await openPreview(token);
+    if (token === generation)
+      $('status').textContent = 'Camera preview only · not measuring.';
+  } catch (error) {
+    if (token === generation) {
+      reportError(error.code, error.message);
+      await stop();
+    }
+  }
+}
+async function checkReadiness(breathingOnly = false) {
+  if (checking || sdk || !stream) return;
+  checking = true;
+  const token = generation;
+  const cameraName = stream.getVideoTracks()[0].label;
+  stream.getTracks().forEach((track) => track.stop());
+  stream = null;
+  $('preview').srcObject = null;
+  $('preview-empty').hidden = false;
+  for (const id of ['camera-picker', 'rotation', 'check-readiness'])
+    $(id).disabled = true;
+  $('measurement-options').hidden = true;
+  $('readiness-result').textContent =
+    'Checking camera readiness… Stop camera cancels this check.';
+  $('session-tag').textContent = 'CAMERA CHECK · NOT MEASURING';
+  try {
+    const result = await window.breathlines.readiness({
+      apiKey: $('api-key').value.trim(),
+      cameraName,
+      breathingOnly,
+      enableTelemetry: $('telemetry').checked,
+      frameTransform: selectedTransform(),
+    });
+    if (token !== generation) return;
+    const verdict = ['ready', 'limited', 'blocked', 'inconclusive'].includes(
+      result.verdict,
+    )
+      ? result.verdict
+      : 'inconclusive';
+    $('readiness-result').textContent =
+      `${verdict.toUpperCase()} — ${result.reason}${verdict !== 'ready' ? ' Try breathing only to reduce processing demand. An inconclusive check is not a pass; blocked full measurement must be resolved first.' : ''}`;
+    $('measure-full').disabled = verdict === 'blocked' || breathingOnly;
+    await openPreview(token);
+    if (token === generation) $('measurement-options').hidden = false;
+    return token === generation ? verdict : null;
+  } catch (error) {
+    if (token === generation)
+      $('readiness-result').textContent =
+        `INCONCLUSIVE — ${error.message}. Prepare the camera again to retry.`;
+  } finally {
+    checking = false;
+    for (const id of ['camera-picker', 'rotation', 'check-readiness'])
+      $(id).disabled = false;
+  }
 }
 async function stop() {
   generation++;
@@ -236,6 +370,7 @@ async function stop() {
   stream = null;
   $('preview').srcObject = null;
   $('preview-empty').hidden = false;
+  $('camera-setup').hidden = true;
   $('session-tag').textContent = 'CAMERA OFF';
   $('start').disabled = false;
   $('status').textContent = 'Camera stopped. Your words are still here.';
@@ -252,13 +387,14 @@ async function stop() {
   }
 }
 async function start(breathingOnly = false) {
-  if (starting || sdk) return;
+  if (starting || checking || sdk || !stream) return;
   if (!approved) {
     show('consent');
     return;
   }
   const key = $('api-key').value.trim();
   if (!key) {
+    await stop();
     show('key-screen');
     $('key-hint').textContent =
       'Add your API key to start the camera. It stays in memory only.';
@@ -273,7 +409,9 @@ async function start(breathingOnly = false) {
     await window.breathlines.consent(true);
     if (token !== generation) return;
     breath = new ExhaleDetector();
-    blink = new BlinkDetector();
+    blink = new DoubleBlinkDetector();
+    eyes = new EyeClosureDetector();
+    landmarksAt = -Infinity;
     source = null;
     chestAt = -Infinity;
     manuscript.trace = [];
@@ -290,6 +428,8 @@ async function start(breathingOnly = false) {
       enableAccumulatedOutput: false,
     });
     sdk = current;
+    current.useMediaStream(stream, { frameTransform: selectedTransform() });
+    $('camera-setup').hidden = true;
     current.on('streamAvailable', (s) => {
       if (token !== generation) {
         s.getTracks().forEach((t) => t.stop());
@@ -368,10 +508,36 @@ $('change-key').onclick = async () => {
   show('key-screen');
 };
 $('stop').onclick = () => void stop();
-$('start').onclick = () => void start();
+$('start').onclick = () => void prepare();
+$('check-readiness').onclick = () => void checkReadiness();
+$('measure-full').onclick = () => void start();
+$('measure-breathing').onclick = async () => {
+  const verdict = await checkReadiness(true);
+  if (verdict && verdict !== 'blocked') await start(true);
+};
+$('camera-picker').onchange = async () => {
+  $('measurement-options').hidden = true;
+  $('readiness-result').textContent = 'Camera changed. Check readiness again.';
+  const token = ++generation;
+  try {
+    await openPreview(token);
+  } catch (error) {
+    if (token === generation) {
+      reportError(error.code, error.message);
+      await stop();
+    }
+  }
+};
+$('rotation').onchange = () => {
+  rotatePreview();
+  $('measurement-options').hidden = true;
+  $('readiness-result').textContent =
+    'Rotation changed. Check readiness again.';
+};
 $('fallback').onclick = async () => {
   await stop();
-  await start(true);
+  await prepare();
+  await checkReadiness(true);
 };
 $('writing').onkeydown = (e) => {
   if (e.key === 'Enter') {

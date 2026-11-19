@@ -82,7 +82,8 @@
               <small>OPTIONAL · OFF BY DEFAULT</small></strong
             >
             <p>
-              Aggregate session summaries only, no frames or vitals. This
+              Session summaries and readiness diagnostics, no frames or vitals.
+              Diagnostics may contain device details and file paths. This
               contacts Presage when enabled.
             </p></span
           ></label
@@ -94,7 +95,8 @@
           I consent — continue <span>→</span>
         </button>
         <p class="footnote">
-          Camera access begins only when you click “Start camera” on the desk.
+          Camera access begins only when you click “Prepare camera” on the desk.
+          Readiness briefly tests the selected camera before measurement.
         </p>
       </section>
     </main>
@@ -192,9 +194,37 @@
           </div>
           <div class="camera-actions">
             <button id="start" class="primary">
-              Start camera <span>↗</span></button
+              Prepare camera <span>↗</span></button
             ><button id="change-key" class="text-button">API key</button>
           </div>
+          <section id="camera-setup" hidden aria-label="Camera preparation">
+            <h3>Can this desk hear your breath?</h3>
+            <p class="small">
+              Choose a camera that sees your face and upper chest. Preview is
+              not measurement.
+            </p>
+            <label for="camera-picker">Camera</label>
+            <select id="camera-picker" aria-label="Camera"></select>
+            <label for="rotation">Rotate camera</label>
+            <select id="rotation">
+              <option value="0">0° — upright</option>
+              <option value="90">90° clockwise</option>
+              <option value="180">180°</option>
+              <option value="270">90° counterclockwise</option>
+            </select>
+            <button id="check-readiness" class="subtle">Check readiness</button>
+            <p id="readiness-result" role="status">
+              Preview your framing, then check readiness.
+            </p>
+            <div id="measurement-options" hidden>
+              <button id="measure-full" class="primary">
+                Measure with full signals
+              </button>
+              <button id="measure-breathing" class="subtle">
+                Use breathing only
+              </button>
+            </div>
+          </section>
           <p id="status" role="status" class="status">Ready when you are.</p>
           <p id="validation" class="validation">
             Sit comfortably in even light, with your face and upper chest in

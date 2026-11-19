@@ -2,6 +2,13 @@ const path = require('node:path');
 const fs = require('node:fs/promises');
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const { bindSmartSpectraIpc } = require('@smartspectra/node-sdk/main');
+const native = require('@smartspectra/node-sdk');
+const { createReadiness } = require('./readiness.cjs');
+const readiness = createReadiness(
+  native.SmartSpectraSDK,
+  native.CameraSelection,
+  native,
+);
 let win;
 let consent = false;
 app.commandLine.appendSwitch('disable-http-cache');
@@ -51,7 +58,28 @@ app.whenReady().then(() => {
     event.sender === win.webContents &&
     event.senderFrame === win.webContents.mainFrame;
   ipcMain.handle('breathlines:consent', (event, value) => {
-    if (trusted(event)) consent = value === true;
+    if (trusted(event)) {
+      consent = value === true;
+      if (!consent) return readiness.cancel();
+    }
+  });
+  ipcMain.handle('breathlines:readiness', (event, options) => {
+    if (!trusted(event) || !consent)
+      throw new Error('Camera consent is required.');
+    if (
+      !options ||
+      typeof options.apiKey !== 'string' ||
+      typeof options.cameraName !== 'string' ||
+      typeof options.breathingOnly !== 'boolean' ||
+      ![
+        native.FrameTransform.kNone,
+        native.FrameTransform.kRotate90CW,
+        native.FrameTransform.kRotate180,
+        native.FrameTransform.kRotate90CCW,
+      ].includes(options.frameTransform)
+    )
+      throw new Error('Invalid readiness configuration.');
+    return readiness.check(options);
   });
   ipcMain.handle('breathlines:key', (event) =>
     trusted(event) ? process.env.SMARTSPECTRA_API_KEY || '' : '',
