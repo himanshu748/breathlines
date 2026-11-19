@@ -18,6 +18,8 @@ The result is a manuscript with a small living margin: available pulse, breathin
 
 [Watch the demo](https://github.com/himanshu748/breathlines/blob/main/docs/demo.mp4) · [Animated preview](https://github.com/himanshu748/breathlines/blob/main/docs/demo.webp)
 
+[Record your own webcam demo: 60-second shot list](https://github.com/himanshu748/breathlines/blob/main/docs/SHOT_LIST.md).
+
 <!-- Before publishing on DEV, upload the video to a public host and replace this comment with its video embed. -->
 
 The recording uses a disclosed prerecorded face clip as Chromium's fake camera, processed by the real SmartSpectra SDK—not simulated metric values. Native camera readiness is inconclusive for that input. The clip demonstrates the interaction, not measurement accuracy or a live participant session.

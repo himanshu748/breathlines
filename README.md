@@ -13,6 +13,8 @@ Setup/warm-up and later writing are shortened with cuts; signals are not synthes
 The video has English neural narration and matching burned-in captions; the
 [timed script and voice credits](docs/demo-narration.md) and
 [SRT captions](docs/demo.srt) are included.
+To make a new take with your own webcam and voice, follow the
+[60-second recording shot list](docs/SHOT_LIST.md).
 
 Blink/eye-closure stanza gestures use the same word-boundary handling and
 1.5-second deferred-break timeout as exhales, retaining the stanza request
