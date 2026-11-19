@@ -333,7 +333,7 @@ async function prepare() {
     }
   }
 }
-async function checkReadiness(breathingOnly = false) {
+async function checkReadiness(breathingOnly = false, excludedMetrics = []) {
   if (checking || sdk || !stream) return;
   checking = true;
   const token = generation;
@@ -353,6 +353,7 @@ async function checkReadiness(breathingOnly = false) {
       apiKey: $('api-key').value.trim(),
       cameraName,
       breathingOnly,
+      excludedMetrics,
       enableTelemetry: $('telemetry').checked,
       frameTransform: selectedTransform(),
     });
@@ -456,7 +457,7 @@ async function start(breathingOnly = false, excluded = []) {
     await stop();
     if (generation !== token + 1 || !approved) return;
     await prepare();
-    const verdict = await checkReadiness(false);
+    const verdict = await checkReadiness(false, next);
     if (verdict && verdict !== 'blocked') await start(false, next);
   };
   try {

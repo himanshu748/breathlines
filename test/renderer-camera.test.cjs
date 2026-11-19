@@ -249,7 +249,16 @@ test('weak readiness shows reason, blocked full mode stays disabled, breathing-o
 });
 
 test('processing failure retries with one optional metric removed, preserves writing and bounds retries', async () => {
-  const d = desk();
+  let recovering = false;
+  const d = desk({
+    onReadiness: (options) => ({
+      verdict:
+        recovering && !options.excludedMetrics.includes(16)
+          ? 'blocked'
+          : 'ready',
+      reason: 'Arterial model unavailable during recovery',
+    }),
+  });
   await d.element('consent-next').onclick();
   d.element('api-key').value = 'test-key';
   await d.run('prepare()');
@@ -257,12 +266,17 @@ test('processing failure retries with one optional metric removed, preserves wri
   await d.run('start()');
   d.element('writing').value = 'Keep my unfinished words';
   d.run("manuscript.finish('Keep my line', {}, false)");
+  recovering = true;
   for (let i = 0; i < 3; i++) {
     d.sessions.at(-1).handlers.error(8, 'processing failed');
     await new Promise((resolve) => setImmediate(resolve));
     if (i < 2) {
       assert.equal(d.sessions.length, i + 2);
       assert.ok(!d.sessions.at(-1).options.requestedMetrics.includes(16));
+      assert.deepEqual(
+        Array.from(d.checks.at(-1).excludedMetrics),
+        i === 0 ? [16] : [16, 14],
+      );
       assert.match(
         d.element('error').textContent,
         /arterial waveform.*unavailable/,

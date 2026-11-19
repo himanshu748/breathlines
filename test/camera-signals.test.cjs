@@ -131,6 +131,13 @@ test('readiness uses native camera IDs, exact metric bundles and destroys on eve
     assert.equal(selected, 'native-id');
     assert.equal(destroyed, true);
     assert.deepEqual(options.requestedMetrics, [0, 1, 2, 15, 11]);
+    await check.check({
+      apiKey: 'test',
+      cameraName: 'Desk camera',
+      breathingOnly: false,
+      excludedMetrics: [15],
+    });
+    assert.deepEqual(options.requestedMetrics, [0, 1, 2, 11]);
     assert.equal(options.enableTelemetry, false);
     await check.check({
       apiKey: 'test',

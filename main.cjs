@@ -71,6 +71,14 @@ app.whenReady().then(() => {
       typeof options.apiKey !== 'string' ||
       typeof options.cameraName !== 'string' ||
       typeof options.breathingOnly !== 'boolean' ||
+      (options.excludedMetrics !== undefined &&
+        (!Array.isArray(options.excludedMetrics) ||
+          !options.excludedMetrics.every((metric) =>
+            [
+              native.MetricType.ARTERIAL_PRESSURE_TRACE,
+              native.MetricType.EXPRESSIONS,
+            ].includes(metric),
+          ))) ||
       ![
         native.FrameTransform.kNone,
         native.FrameTransform.kRotate90CW,

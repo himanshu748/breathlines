@@ -10,6 +10,7 @@ function createReadiness(SDK, CameraSelection, bundles) {
       breathingOnly,
       enableTelemetry,
       frameTransform = 0,
+      excludedMetrics = [],
     }) {
       if (active) throw new Error('A readiness check is already running.');
       const sdk = new SDK({
@@ -21,7 +22,7 @@ function createReadiness(SDK, CameraSelection, bundles) {
               ...bundles.breathingMetrics,
               ...bundles.cardioMetrics,
               ...bundles.faceMetrics,
-            ],
+            ].filter((metric) => !excludedMetrics.includes(metric)),
       });
       let release;
       active = {
