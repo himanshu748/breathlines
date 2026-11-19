@@ -1,5 +1,30 @@
 # Breathlines ∿
 
+## Submission and demo
+
+[DEV submission draft](docs/SUBMISSION.md) · [Demo video](docs/demo.mp4) ·
+[Animated preview](docs/demo.webp)
+
+The demo uses a prerecorded fake camera with real SmartSpectra processing, not
+simulated readings. Typing uses no Enter; exhale-triggered breaks preserve words.
+Fake-camera native readiness is inconclusive. The recording includes Stop and
+an explicit HTML export.
+Setup/warm-up and later writing are shortened with cuts; signals are not synthesized.
+The video is silent and uses explanatory captions.
+
+Known writing limitation: exhale breaks preserve words, but a blink/eye-closure
+stanza gesture commits the current draft immediately and can interrupt a word.
+This separate gesture path is not changed by the camera-recovery fix.
+
+**Demo media license (separate from the MIT app): CC BY-NC-SA 2.5.** Face footage:
+Dan Gillmor / Center for Citizen Media, _Jimmy Wales on Collective Intelligence_,
+[Internet Archive source](https://archive.org/details/DanGillmor_CenterforCitizenMediaJimmyWalesonCollectiveIntelligence).
+Changes: excerpt 00:30–01:15, muted, scaled/transcoded, presented within a screen
+recording. `docs/demo.mp4` and `docs/demo.webp` are shared under
+[CC BY-NC-SA 2.5](https://creativecommons.org/licenses/by-nc-sa/2.5/):
+non-commercial use only, attribution required, adaptations under the same license.
+No endorsement is implied. See [TEST_VIDEO.md](TEST_VIDEO.md) for details.
+
 ### Linux software Vulkan and smoke diagnostics
 
 Some optional SDK models require Vulkan even on a CPU-only VM. On Ubuntu,

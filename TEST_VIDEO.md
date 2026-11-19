@@ -18,9 +18,11 @@ MP4, MOV, AVI, WebM, or Y4M assets were present.
   Intelligence_. Changes: excerpted 00:30–01:15, audio removed, transcoded to
   H.264 MP4 and scaled Y4M. Derivatives retain CC BY-NC-SA 2.5. No endorsement
   by the interviewer or interviewee is implied.
-- This is a **noncommercial local test asset only**, not MIT-licensed and not
-  bundled or used in app marketing. Do not redistribute it in a commercial
-  product; obtain a suitable separately licensed recording for that use.
+- This is a **noncommercial test asset**, not MIT-licensed. The public challenge
+  demo in `docs/demo.mp4` and its preview show this footage inside the app and
+  are separately shared under CC BY-NC-SA 2.5, with attribution in the README.
+  Do not redistribute it in a commercial product; obtain a suitable separately
+  licensed recording for that use.
 - Stationary indoor seated interview, predominantly frontal face and even
   lighting. It includes natural speech/head motion, and is only 320×240 with
   visible compression. It is useful for exercising the file/fake-camera path,
