@@ -16,17 +16,17 @@ The result is a manuscript with a small living margin: available pulse, breathin
 
 ## Demo
 
-[Watch the demo](./demo.mp4) · [Animated preview](./demo.webp)
+[Watch the demo](https://github.com/himanshu748/breathlines/blob/main/docs/demo.mp4) · [Animated preview](https://github.com/himanshu748/breathlines/blob/main/docs/demo.webp)
 
 <!-- Before publishing on DEV, upload the video to a public host and replace this comment with its video embed. -->
 
 The recording uses a disclosed prerecorded face clip as Chromium's fake camera, processed by the real SmartSpectra SDK—not simulated metric values. Native camera readiness is inconclusive for that input. The clip demonstrates the interaction, not measurement accuracy or a live participant session.
 
-The demo is shared under CC BY-NC-SA 2.5. Face footage: Dan Gillmor / Center for Citizen Media, _Jimmy Wales on Collective Intelligence_, excerpted, muted and transcoded; see [source and license](../TEST_VIDEO.md). Non-commercial use only; adaptations must retain the same license. No endorsement is implied.
+The demo is shared under CC BY-NC-SA 2.5. Face footage: Dan Gillmor / Center for Citizen Media, _Jimmy Wales on Collective Intelligence_, excerpted, muted and transcoded; see [source and license](https://github.com/himanshu748/breathlines/blob/main/TEST_VIDEO.md). Non-commercial use only; adaptations must retain the same license. No endorsement is implied.
 
 ## Code
 
-Repository: <https://github.com/himanshu748/breathlines>. The [README](../README.md) includes setup, platform requirements, tests, privacy details and a real-SDK file smoke runner.
+Repository: <https://github.com/himanshu748/breathlines>. The [README](https://github.com/himanshu748/breathlines/blob/main/README.md) includes setup, platform requirements, tests, privacy details and a real-SDK file smoke runner.
 
 Use Node 20+ and a supported desktop OS, clone the repository, then run `npm install` and `npm start`. A Presage developer key with the required metric access is needed for measurement. Supply `SMARTSPECTRA_API_KEY` in your environment or enter it in the app; never commit it. Linux also needs Electron's desktop dependencies and, for some optional models, a working Vulkan driver. Mesa lavapipe worked on the development VM.
 
