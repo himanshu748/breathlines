@@ -20,6 +20,7 @@ const {
   WordBoundaryBreak,
 } = require('./signals.cjs');
 const { nextRecovery } = require('./recovery.cjs');
+const { wrapText } = require('./text-layout.cjs');
 const $ = (id) => document.getElementById(id);
 const manuscript = new Manuscript();
 const wordBreak = new WordBoundaryBreak();
@@ -635,22 +636,9 @@ async function exportManuscript(type) {
         c = canvas.getContext('2d');
       canvas.width = 1600;
       c.font = '28px monospace';
-      const wrap = (text, width) => {
-        const rows = [];
-        let row = '';
-        for (const char of Array.from(text)) {
-          if (c.measureText(row + char).width > width) {
-            rows.push(row);
-            row = '';
-          }
-          row += char;
-        }
-        if (row) rows.push(row);
-        return rows;
-      };
       const blocks = lines.map((line) => ({
         line,
-        rows: wrap(line.text, 960),
+        rows: wrapText(line.text, 960, (text) => c.measureText(text).width),
       }));
       const height =
         350 +
