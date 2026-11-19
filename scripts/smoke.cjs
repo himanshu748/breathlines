@@ -8,7 +8,9 @@ const {
 const { decodeMetrics } = require('@smartspectra/node-sdk/messages');
 const {
   ExhaleDetector,
-  BlinkDetector,
+  DoubleBlinkDetector,
+  EyeClosureDetector,
+  eyeOpenness,
   timestampMs,
 } = require('../signals.cjs');
 async function main() {
@@ -20,6 +22,7 @@ async function main() {
     apiKey: process.env.SMARTSPECTRA_API_KEY,
     requestedMetrics: [...breathingMetrics, ...cardioMetrics, ...faceMetrics],
     enableTelemetry: false,
+    enableAccumulatedOutput: false,
   });
   let pulse = false,
     breathing = false,
@@ -30,7 +33,13 @@ async function main() {
     chestAt = -Infinity,
     running = false;
   const exhale = new ExhaleDetector(),
-    blink = new BlinkDetector();
+    blink = new DoubleBlinkDetector(),
+    eyes = new EyeClosureDetector();
+  let closures = 0;
+  const readings = {},
+    validation = {},
+    fixture = { chest: [], eyes: [] };
+  const counted = new Map();
   let settle;
   const done = new Promise((resolve) => {
     settle = resolve;
@@ -44,9 +53,10 @@ async function main() {
     )
       settle();
   });
-  sdk.on('validationStatus', (code, ts, hint) =>
-    console.log('validation', code, hint),
-  );
+  sdk.on('validationStatus', (code, ts, hint) => {
+    validation[code] = (validation[code] || 0) + 1;
+    if (validation[code] === 1) console.log('validation', code, hint);
+  });
   sdk.on('error', (code, message) => {
     console.error(
       `SDK error ${code}: ${message}${code === 13 ? ' — metric not authorized; use a key with cardio/face access' : ''}`,
@@ -58,6 +68,41 @@ async function main() {
     const m = decodeMetrics(buf),
       upper = m.breathing?.upperTrace || [],
       lower = m.breathing?.lowerTrace || [];
+    for (const [group, fields] of Object.entries(m)) {
+      if (!fields || typeof fields !== 'object') continue;
+      for (const [field, samples] of Object.entries(fields)) {
+        if (!Array.isArray(samples)) continue;
+        const name = `${group}.${field}`;
+        const stat = (readings[name] ||= {
+          samples: 0,
+          confident: 0,
+          stable: 0,
+        });
+        for (const s of samples) {
+          const t = Number(s.timestamp);
+          if (t <= (counted.get(name) ?? -Infinity)) continue;
+          counted.set(name, t);
+          stat.samples++;
+          if (s.confidence > 0 || s.scores?.some((x) => x.confidence > 0))
+            stat.confident++;
+          if (s.stable) stat.stable++;
+        }
+      }
+    }
+    for (const s of upper) {
+      const t = timestampMs(s.timestamp);
+      if (
+        fixture.chest.length < 600 &&
+        t > (fixture.chest.at(-1)?.[0] ?? -Infinity) + 90
+      )
+        fixture.chest.push([t, s.value]);
+    }
+    for (const s of m.face?.landmarks || []) {
+      if (eyes.push(s, timestampMs(s.timestamp))) closures++;
+      const ratio = eyeOpenness(s.value);
+      if (s.stable && ratio && fixture.eyes.length < 100)
+        fixture.eyes.push([timestampMs(s.timestamp), ...ratio]);
+    }
     if (upper.length) chestAt = timestampMs(upper.at(-1).timestamp);
     const next = upper.length
       ? 'chest'
@@ -81,9 +126,6 @@ async function main() {
     for (const s of m.cardio?.pulseRate || [])
       if (s.confidence > 0) {
         pulse = true;
-        console.log(
-          `pulse ${s.value.toFixed(1)} bpm (${s.confidence}% confidence)`,
-        );
       }
     if (m.breathing?.rate?.some((s) => s.confidence > 0)) breathing = true;
   });
@@ -93,7 +135,9 @@ async function main() {
     settle();
   }, 180000);
   try {
-    sdk.useFile(require('node:path').resolve(process.argv[2]));
+    sdk.useFile(require('node:path').resolve(process.argv[2]), {
+      interframeDelayMs: 40,
+    });
     sdk.start();
     await done;
   } finally {
@@ -101,15 +145,44 @@ async function main() {
     await sdk.destroy();
   }
   console.log(
-    `Summary: exhales=${exhales}, blinkGestures=${blinks}, pulse=${pulse}, breathing=${breathing}`,
+    `Summary: exhales=${exhales}, blinkGestures=${blinks}, eyeClosures=${closures}, pulse=${pulse}, breathing=${breathing}`,
   );
+  console.log('Readings:', JSON.stringify(readings));
+  console.log('Validation:', JSON.stringify(validation));
+  const fixturePath = process.argv
+    .find((arg) => arg.startsWith('--fixture='))
+    ?.slice(10);
+  if (fixturePath)
+    require('node:fs').writeFileSync(fixturePath, JSON.stringify(fixture));
   if (failed || !pulse || !breathing)
     throw new Error(
       'FAIL: no confident pulse/breathing readings, or SDK error',
     );
   console.log('OK: real SDK pulse and breathing readings appeared');
 }
-main().catch((e) => {
-  console.error(e.message);
-  process.exitCode = 1;
-});
+if (process.argv.includes('--worker')) {
+  main()
+    .then(() => process.send?.({ success: true }))
+    .catch((e) => {
+      console.error(e.message);
+      process.exitCode = 1;
+    });
+} else {
+  const child = require('node:child_process').fork(
+    __filename,
+    [...process.argv.slice(2), '--worker'],
+    {
+      stdio: ['inherit', 'inherit', 'inherit', 'ipc'],
+    },
+  );
+  let success = false;
+  child.on('message', (message) => {
+    success = message.success === true;
+  });
+  child.on('error', () => {
+    process.exitCode = 1;
+  });
+  child.on('exit', (code) => {
+    process.exitCode = code === 0 && success ? 0 : 1;
+  });
+}

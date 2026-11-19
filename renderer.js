@@ -4,6 +4,7 @@ const {
   ValidationCode,
   FrameTransform,
   SmartSpectraErrorCode,
+  MetricType,
   breathingMetrics,
   cardioMetrics,
   faceMetrics,
@@ -17,6 +18,7 @@ const {
   EyeClosureDetector,
   DoubleBlinkDetector,
 } = require('./signals.cjs');
+const { nextRecovery } = require('./recovery.cjs');
 const $ = (id) => document.getElementById(id);
 const manuscript = new Manuscript();
 let breath = new ExhaleDetector(),
@@ -386,7 +388,7 @@ async function stop() {
     } catch {}
   }
 }
-async function start(breathingOnly = false) {
+async function start(breathingOnly = false, excluded = []) {
   if (starting || checking || sdk || !stream) return;
   if (!approved) {
     show('consent');
@@ -405,6 +407,35 @@ async function start(breathingOnly = false) {
   $('error').hidden = true;
   $('fallback').hidden = true;
   const token = ++generation;
+  let handlingFailure = false;
+  const unavailable = () =>
+    excluded
+      .map((metric) =>
+        metric === MetricType.ARTERIAL_PRESSURE_TRACE
+          ? 'arterial waveform'
+          : 'expression',
+      )
+      .join(', ');
+  const failure = async (code, message) => {
+    if (token !== generation || handlingFailure) return;
+    handlingFailure = true;
+    const next = breathingOnly
+      ? null
+      : nextRecovery(code, message, excluded, MetricType);
+    if (!next) {
+      reportError(code, message);
+      await stop();
+      return;
+    }
+    $('error').hidden = false;
+    $('error').textContent =
+      'An optional model failed. Your words are preserved. Retrying with one fewer optional metric; the SDK may not identify which model failed.';
+    await stop();
+    if (generation !== token + 1 || !approved) return;
+    await prepare();
+    const verdict = await checkReadiness(false);
+    if (verdict && verdict !== 'blocked') await start(false, next);
+  };
   try {
     await window.breathlines.consent(true);
     if (token !== generation) return;
@@ -423,11 +454,18 @@ async function start(breathingOnly = false) {
       apiKey: key,
       requestedMetrics: breathingOnly
         ? [...breathingMetrics]
-        : [...breathingMetrics, ...cardioMetrics, ...faceMetrics],
+        : [...breathingMetrics, ...cardioMetrics, ...faceMetrics].filter(
+            (metric) => !excluded.includes(metric),
+          ),
       enableTelemetry: $('telemetry').checked,
       enableAccumulatedOutput: false,
     });
     sdk = current;
+    if (excluded.length) {
+      $('error').hidden = false;
+      $('error').textContent =
+        `Recovery session: ${unavailable()} unavailable (disabled after a processing failure). Your manuscript is preserved. Stop and prepare again to request all signals.`;
+    }
     current.useMediaStream(stream, { frameTransform: selectedTransform() });
     $('camera-setup').hidden = true;
     current.on('streamAvailable', (s) => {
@@ -454,7 +492,7 @@ async function start(breathingOnly = false) {
     current.on('processingStatus', (status) => {
       if (token === generation) {
         $('status').textContent =
-          `Processing: ${statuses[status] || status}${breathingOnly ? ' · breathing only; cardio & face disabled' : ''}`;
+          `Processing: ${statuses[status] || status}${breathingOnly ? ' · breathing only; cardio & face disabled' : ''}${excluded.length ? ` · unavailable: ${unavailable()}` : ''}`;
         $('session-tag').textContent =
           status === ProcessingStatus.kRunning
             ? 'CAMERA ON · LOCAL'
@@ -467,10 +505,7 @@ async function start(breathingOnly = false) {
           hint || validations[code] || `Validation ${code}`;
     });
     current.on('error', (code, message) => {
-      if (token === generation) {
-        reportError(code, message);
-        void stop();
-      }
+      void failure(code, message);
     });
     await current.start();
     if (token !== generation) {
@@ -479,10 +514,7 @@ async function start(breathingOnly = false) {
       } catch {}
     }
   } catch (e) {
-    if (token === generation) {
-      reportError(e.code, e.message);
-      await stop();
-    }
+    await failure(e.code, e.message);
   } finally {
     if (token === generation) starting = false;
   }

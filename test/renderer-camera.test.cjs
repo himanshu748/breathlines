@@ -70,13 +70,14 @@ function desk() {
               kRotate90CCW: 2,
             },
             SmartSpectraErrorCode: { kSustainedLowFrameRate: 14 },
+            MetricType: { ARTERIAL_PRESSURE_TRACE: 16, EXPRESSIONS: 14 },
             breathingMetrics: [0, 1, 2],
             cardioMetrics: [15, 16, 17],
             faceMetrics: [11, 12, 13, 14],
           }
         : name.endsWith('/messages')
           ? { decodeMetrics: (value) => value }
-          : require('../signals.cjs'),
+          : require(`../${name.slice(2)}`),
     document: { getElementById: element, createElement: () => ({}) },
     window: {
       addEventListener() {},
@@ -189,4 +190,31 @@ test('weak readiness shows reason, blocked full mode stays disabled, breathing-o
     Array.from(d.sessions[0].options.requestedMetrics),
     [0, 1, 2],
   );
+});
+
+test('processing failure retries with one optional metric removed, preserves writing and bounds retries', async () => {
+  const d = desk();
+  await d.element('consent-next').onclick();
+  d.element('api-key').value = 'test-key';
+  await d.run('prepare()');
+  await d.run('checkReadiness()');
+  await d.run('start()');
+  d.element('writing').value = 'Keep my unfinished words';
+  d.run("manuscript.finish('Keep my line', {}, false)");
+  for (let i = 0; i < 3; i++) {
+    d.sessions.at(-1).handlers.error(8, 'processing failed');
+    await new Promise((resolve) => setImmediate(resolve));
+    if (i < 2) {
+      assert.equal(d.sessions.length, i + 2);
+      assert.ok(!d.sessions.at(-1).options.requestedMetrics.includes(16));
+      assert.match(
+        d.element('error').textContent,
+        /arterial waveform.*unavailable/,
+      );
+    }
+  }
+  assert.equal(d.sessions.length, 3);
+  assert.equal(d.sessions.at(-1).destroyed, true);
+  assert.equal(d.element('writing').value, 'Keep my unfinished words');
+  assert.equal(d.run('manuscript.lines.length'), 1);
 });

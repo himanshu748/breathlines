@@ -1,5 +1,34 @@
 # Breathlines ∿
 
+### Linux software Vulkan and smoke diagnostics
+
+Some optional SDK models require Vulkan even on a CPU-only VM. On Ubuntu,
+install `mesa-vulkan-drivers vulkan-tools` and check `vulkaninfo --summary`.
+Mesa lavapipe provides a software implementation; when automatic ICD selection
+fails, launch with
+`VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json`.
+This is slower than hardware acceleration. No SDK CPU-only constructor switch
+is documented in the installed 3.5.0 declarations.
+
+The smoke runner paces file frames at 40ms so EOF does not immediately cancel
+model downloads. It reports unique sample counts, positive confidence, stable
+detections and detector events, and a supervisor returns exit 1 unless a
+successful summary was received. Traces, landmarks, blinking and talking do not
+all expose confidence fields: stable counts are not numeric confidence.
+`--fixture=/absolute/path.json` explicitly saves a small numeric waveform and
+derived eye ratios only; nothing is recorded by default. See `TEST_VIDEO.md`
+for the real-data fixture's separate license and limitations.
+
+On SDK processing failure (code 8), the desk preserves finished and unfinished
+writing and retries at most twice with optional model metrics removed. A named
+`phasic-bp-inference` or `expressions-inference` failure disables only its
+arterial-waveform or expression metric. If the SDK reports only “processing
+failed”, it cannot identify the cause: recovery conservatively disables the
+arterial waveform first, then expression, and labels each unavailable rather
+than claiming a diagnosis. Other metrics remain requested. Authentication,
+authorization and low-FPS errors are not automatically retried. Stop camera
+cancels recovery; a fresh preparation requests all signals again.
+
 **A writing desk where your breath writes the line breaks.** An Electron entry
 for the DEV Presage SmartSpectra SDK Challenge. Type freely; the end of an
 exhale finds the edge of your line. A long blink or double blink leaves room

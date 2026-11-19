@@ -24,8 +24,21 @@ MP4, MOV, AVI, WebM, or Y4M assets were present.
 - Stationary indoor seated interview, predominantly frontal face and even
   lighting. It includes natural speech/head motion, and is only 320×240 with
   visible compression. It is useful for exercising the file/fake-camera path,
-  **not** a physiological accuracy benchmark. SDK quality/metric availability
-  on it is unverified without a key. 45s is too short for confidence-gated HRV.
+  **not** a physiological accuracy benchmark. A keyed SmartSpectra 3.5.0 run
+  with paced playback and Mesa lavapipe completed with confident pulse,
+  breathing rate, expression and arterial waveform readings. Every validation
+  event was code 0 (`kOk`, “Hold still and record”), not a motion warning.
+  45s is too short for confidence-gated HRV.
+
+### Numeric regression excerpt
+
+`test/real-signals.json` contains rounded chest waveform values from the first
+20 seconds and the first 100 stable pairs of derived eye-openness ratios from
+that run. It contains no frames or face coordinates. Attribution and
+**CC BY-NC-SA 2.5** terms above apply to this derived fixture, separately from
+the application's MIT license. SDK detection counts are regression baselines,
+not independently annotated physiological ground truth; no thresholds were
+tuned to this interview clip.
 
 Reproduce outside the repository:
 
