@@ -1,51 +1,111 @@
 class ExhaleDetector {
-  constructor() { this.reset(); }
-  reset() { this.lastTime = -Infinity; this.smooth = null; this.high = null; this.low = null; this.phase = 'seek'; this.lastBreak = -Infinity; this.range = 0; }
+  constructor() {
+    this.reset();
+  }
+  reset() {
+    this.lastTime = -Infinity;
+    this.smooth = null;
+    this.high = null;
+    this.low = null;
+    this.phase = 'seek';
+    this.lastBreak = -Infinity;
+    this.range = 0;
+  }
   push(value, time) {
-    if (!Number.isFinite(value) || !Number.isFinite(time) || time <= this.lastTime) return false;
+    if (
+      !Number.isFinite(value) ||
+      !Number.isFinite(time) ||
+      time <= this.lastTime
+    )
+      return false;
     if (time - this.lastTime > 2500) this.reset();
     this.lastTime = time;
-    this.smooth = this.smooth === null ? value : .25 * value + .75 * this.smooth;
+    // Smooth frame noise; require a 15% recovery from the trough to end an exhale.
+    this.smooth =
+      this.smooth === null ? value : 0.25 * value + 0.75 * this.smooth;
     const y = this.smooth;
     this.high = this.high === null ? y : Math.max(y, this.high);
     this.low = this.low === null ? y : Math.min(y, this.low);
-    this.range = Math.max(this.range * .998, this.high - this.low);
-    const hysteresis = Math.max(.0001, this.range * .15);
-    if (this.phase === 'seek' && this.high - y > hysteresis) { this.phase = 'fall'; this.low = y; }
+    this.range = Math.max(this.range * 0.998, this.high - this.low);
+    const hysteresis = Math.max(0.0001, this.range * 0.15);
+    if (this.phase === 'seek' && this.high - y > hysteresis) {
+      this.phase = 'fall';
+      this.low = y;
+    }
     if (this.phase === 'fall') {
       this.low = Math.min(this.low, y);
       if (y - this.low > hysteresis) {
-        this.phase = 'rise'; this.high = y;
-        if (time - this.lastBreak >= 1300) { this.lastBreak = time; return true; }
+        this.phase = 'rise';
+        this.high = y;
+        // A 1.3s refractory period prevents small rebounds from making extra lines.
+        if (time - this.lastBreak >= 1300) {
+          this.lastBreak = time;
+          return true;
+        }
       }
     } else if (this.phase === 'rise') {
       this.high = Math.max(this.high, y);
-      if (this.high - y > hysteresis) { this.phase = 'fall'; this.low = y; }
+      if (this.high - y > hysteresis) {
+        this.phase = 'fall';
+        this.low = y;
+      }
     }
     return false;
   }
 }
 
 class BlinkDetector {
-  constructor() { this.lastTime = -Infinity; this.down = null; this.previous = null; this.fired = false; }
+  constructor() {
+    this.lastTime = -Infinity;
+    this.down = null;
+    this.previous = null;
+    this.fired = false;
+  }
   push(detected, time) {
-    if (typeof detected !== 'boolean' || !Number.isFinite(time) || time <= this.lastTime) return false;
-    if (time - this.lastTime > 2000) { this.down = null; this.previous = null; this.fired = false; }
+    if (
+      typeof detected !== 'boolean' ||
+      !Number.isFinite(time) ||
+      time <= this.lastTime
+    )
+      return false;
+    if (time - this.lastTime > 2000) {
+      this.down = null;
+      this.previous = null;
+      this.fired = false;
+    }
     this.lastTime = time;
     if (detected) {
-      if (this.down === null) { this.down = time; this.fired = false; }
-      if (!this.fired && time - this.down >= 650) { this.fired = true; this.previous = null; return true; }
+      if (this.down === null) {
+        this.down = time;
+        this.fired = false;
+      }
+      // 650ms distinguishes a deliberate hold; 60ms rejects short detection glitches.
+      if (!this.fired && time - this.down >= 650) {
+        this.fired = true;
+        this.previous = null;
+        return true;
+      }
     } else if (this.down !== null) {
       const duration = time - this.down;
       this.down = null;
       if (this.fired) return false;
-      if (duration >= 650) { this.previous = null; return true; }
+      if (duration >= 650) {
+        this.previous = null;
+        return true;
+      }
       if (duration < 60) return false;
-      if (this.previous !== null && time - this.previous <= 1000) { this.previous = null; return true; }
+      if (this.previous !== null && time - this.previous <= 1000) {
+        this.previous = null;
+        return true;
+      }
       this.previous = time;
     }
     return false;
   }
+}
+
+function timestampMs(timestamp) {
+  return Number(timestamp) / 1000;
 }
 
 function confident(sample, field = 'value') {
@@ -53,29 +113,68 @@ function confident(sample, field = 'value') {
   return { value: sample[field], confidence: sample.confidence / 100 };
 }
 function marginalia(metrics, elapsedMs) {
-  const last = list => list?.at(-1);
+  const last = (list) => list?.at(-1);
   const expression = last(metrics.face?.expression);
-  const candidates = (expression?.scores || []).filter(s => s.confidence > 0).slice().sort((a,b) => b.confidence-a.confidence);
-  const names = ['unspecified','angry','contempt','disgust','fear','happy','neutral','sad','surprise'];
+  const candidates = (expression?.scores || [])
+    .filter((s) => s.confidence > 0)
+    .slice()
+    .sort((a, b) => b.confidence - a.confidence);
+  const names = [
+    'unspecified',
+    'angry',
+    'contempt',
+    'disgust',
+    'fear',
+    'happy',
+    'neutral',
+    'sad',
+    'surprise',
+  ];
   const talking = last(metrics.face?.talking);
   return {
     pulse: confident(last(metrics.cardio?.pulseRate)),
     breathing: confident(last(metrics.breathing?.rate)),
-    hrv: elapsedMs >= 60000 ? confident(last(metrics.cardio?.hrv), 'rmssd') : null,
-    expression: candidates.length ? { value: names[candidates[0].type] || 'unspecified', confidence: candidates[0].confidence / 100 } : null,
-    talking: talking?.stable && typeof talking.detected === 'boolean' ? { value: talking.detected ? 'talking' : 'quiet', stable: true } : null,
+    hrv:
+      elapsedMs >= 60000 ? confident(last(metrics.cardio?.hrv), 'rmssd') : null,
+    expression: candidates.length
+      ? {
+          value: names[candidates[0].type] || 'unspecified',
+          confidence: candidates[0].confidence / 100,
+        }
+      : null,
+    talking:
+      talking?.stable && typeof talking.detected === 'boolean'
+        ? { value: talking.detected ? 'talking' : 'quiet', stable: true }
+        : null,
   };
 }
 class Manuscript {
-  constructor() { this.lines = []; this.pendingStanza = false; this.trace = []; }
+  constructor() {
+    this.lines = [];
+    this.pendingStanza = false;
+    this.trace = [];
+  }
   finish(text, notes, stanza = false) {
     if (!text.trim()) {
       if (stanza && this.lines.length) this.pendingStanza = true;
       return false;
     }
-    this.lines.push({ text: text.trim(), notes: structuredClone(notes), trace: this.trace.slice(-160), stanza: this.pendingStanza });
-    this.trace = []; this.pendingStanza = stanza;
+    this.lines.push({
+      text: text.trim(),
+      notes: structuredClone(notes),
+      trace: this.trace.slice(-160),
+      stanza: this.pendingStanza,
+    });
+    this.trace = [];
+    this.pendingStanza = stanza;
     return true;
   }
 }
-module.exports = { ExhaleDetector, BlinkDetector, marginalia, confident, Manuscript };
+module.exports = {
+  ExhaleDetector,
+  BlinkDetector,
+  marginalia,
+  confident,
+  Manuscript,
+  timestampMs,
+};

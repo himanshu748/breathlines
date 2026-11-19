@@ -53,18 +53,18 @@ renderer-safe SDK and `decodeMetrics` from `/messages`. The SDK acquires the
 camera at `start()` and exposes its `streamAvailable` MediaStream for preview.
 No microphone is requested or permitted.
 
-| SDK field | On the desk |
-| --- | --- |
-| `breathing.upperTrace` | Chest trace; exponential smoothing, relative 15% hysteresis, trough confirmed by a rising edge, 1.3s refractory interval. One break per exhale, not per frame. Confirmation introduces a small delay. |
-| `breathing.lowerTrace` | Abdomen trace; used when no new chest samples arrive for 1.5s. Switching source resets the detector to avoid a false break. |
-| `face.blinking[].detected` | Stable detections only. Closure ≥650ms or two completed blinks (each ≥60ms) within 1s requests a stanza. No repeated break during a held blink. SDK sampling/lighting may miss gestures. |
-| `cardio.pulseRate` | Line ink becomes warmer with the estimated pulse; pulse is also recorded in marginalia. |
-| `breathing.rate` | Breaths/min in the live readout and the line's margin. |
-| `cardio.hrv[].rmssd` | Shown only after 60s of the current session **and** confidence >0. A longer recording is needed to test HRV. |
-| `face.expression[].scores` | Highest-confidence expression label at line completion; never interpreted as a psychological diagnosis. |
-| `face.talking` | Stable talking/quiet indicator. **This SDK field has no numeric confidence**, so it is explicitly labeled “stable SDK detection,” not assigned a made-up percentage. |
-| `cardio.arterialPressureTrace` | Live pulse waveform only; no blood pressure values or medical interpretation. |
-| `validationStatus` / `processingStatus` | SDK hint text (light, framing, etc.) and session state shown beside the preview. |
+| SDK field                               | On the desk                                                                                                                                                                                           |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `breathing.upperTrace`                  | Chest trace; exponential smoothing, relative 15% hysteresis, trough confirmed by a rising edge, 1.3s refractory interval. One break per exhale, not per frame. Confirmation introduces a small delay. |
+| `breathing.lowerTrace`                  | Abdomen trace; used when no new chest samples arrive for 1.5s. Switching source resets the detector to avoid a false break.                                                                           |
+| `face.blinking[].detected`              | Stable detections only. Closure ≥650ms or two completed blinks (each ≥60ms) within 1s requests a stanza. No repeated break during a held blink. SDK sampling/lighting may miss gestures.              |
+| `cardio.pulseRate`                      | Line ink becomes warmer with the estimated pulse; pulse is also recorded in marginalia.                                                                                                               |
+| `breathing.rate`                        | Breaths/min in the live readout and the line's margin.                                                                                                                                                |
+| `cardio.hrv[].rmssd`                    | Shown only after 60s of the current session **and** confidence >0. A longer recording is needed to test HRV.                                                                                          |
+| `face.expression[].scores`              | Highest-confidence expression label at line completion; never interpreted as a psychological diagnosis.                                                                                               |
+| `face.talking`                          | Stable talking/quiet indicator. **This SDK field has no numeric confidence**, so it is explicitly labeled “stable SDK detection,” not assigned a made-up percentage.                                  |
+| `cardio.arterialPressureTrace`          | Live pulse waveform only; no blood pressure values or medical interpretation.                                                                                                                         |
+| `validationStatus` / `processingStatus` | SDK hint text (light, framing, etc.) and session state shown beside the preview.                                                                                                                      |
 
 Numeric estimates and expression scores require confidence **>0**. SDK
 confidence percentages (0–100) are normalized internally, never interpreted as
@@ -122,6 +122,49 @@ medical condition, or making health decisions. Do not use this app to infer
 someone else's physiology without their informed consent.
 
 ## Tests & development
+
+`npm run format` applies Prettier (two-space indentation); `npm run format:check`
+checks source and documentation without rewriting generated bundles or lockfiles.
+
+### SDK schema verification
+
+Checked against `@smartspectra/node-sdk` **3.5.0**, specifically
+`node_modules/@smartspectra/node-sdk/js/messages/generated.d.ts`:
+
+- `ExpressionType` (lines 352–361): UNSPECIFIED=0, ANGRY=1, CONTEMPT=2,
+  DISGUST=3, FEAR=4, HAPPY=5, NEUTRAL=6, SAD=7, SURPRISE=8.
+  `IExpression.scores` holds `{ type, confidence }` entries, not named fields.
+- `IMeasurementWithConfidence` (233–246), `IExpressionScore` (365–372), and
+  `IHrv` (580–607) specify confidence **0–100**, not 0–1. Dividing by 100 is
+  intentional for internal normalized notes; the UI multiplies by 100 for `%`.
+- `IHrv`: `rmssd`, `meanNn`, `sdnn`, `baevsky`, `timestamp`, `confidence`,
+  `stable`. The RMSSD field and 60s application warmup are unchanged.
+- `IDetectionStatus` (122–132): `detected`, `stable`, `timestamp`, **no
+  confidence**. Both `IFace.blinking` and `IFace.talking` are arrays of this
+  type (1262–1265). `IExpression` also exposes `stable` (468–478).
+- Timestamp fields are **microseconds since Linux epoch**, represented as
+  `number | Long`. Shared `timestampMs` uses `Number(timestamp) / 1000` before
+  either detector; thresholds and wall-clock cache ages are in milliseconds.
+
+No schema mismatch was found. `test/sdk-schema.test.cjs` round-trips synthetic
+payloads through the SDK's actual `Metrics` encoder and `decodeMetrics`, checks
+every expression enum, confidence normalization, RMSSD gating, talking shape,
+and a 650ms blink using decoded epoch-microsecond timestamps. These are schema
+regressions, not a substitute for keyed video processing.
+
+### GitHub Actions
+
+`.github/workflows/ci.yml` runs `npm ci`, `npm test`, and formatting checks on
+`ubuntu-latest` with Node 22. The unit job outputs only a boolean indicating
+whether the `SMARTSPECTRA_API_KEY` repository secret is available. The dependent
+smoke job runs **only** when that boolean is true (fork PRs without secrets skip
+it). This avoids unsupported direct secret references in a job-level `if`.
+The smoke job downloads and excerpts the same attributed noncommercial test
+video described in `TEST_VIDEO.md`, then invokes the real SDK smoke script.
+It requires cardio/face authorization as well as breathing access; download,
+authentication, missing confident readings, and processing failures fail the job.
+Neither keys nor video artifacts are uploaded. Add the secret only when ready
+to enable this network-dependent integration check.
 
 ```sh
 npm test

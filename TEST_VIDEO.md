@@ -14,8 +14,8 @@ MP4, MOV, AVI, WebM, or Y4M assets were present.
   <https://archive.org/download/DanGillmor_CenterforCitizenMediaJimmyWalesonCollectiveIntelligence/JimmyWales.mp4>
 - License, verified in the Archive item's `metadata.licenseurl`:
   **[CC BY-NC-SA 2.5](https://creativecommons.org/licenses/by-nc-sa/2.5/)**.
-  Attribution: Dan Gillmor, Center for Citizen Media, *Jimmy Wales on Collective
-  Intelligence*. Changes: excerpted 00:30–01:15, audio removed, transcoded to
+  Attribution: Dan Gillmor, Center for Citizen Media, _Jimmy Wales on Collective
+  Intelligence_. Changes: excerpted 00:30–01:15, audio removed, transcoded to
   H.264 MP4 and scaled Y4M. Derivatives retain CC BY-NC-SA 2.5. No endorsement
   by the interviewer or interviewee is implied.
 - This is a **noncommercial local test asset only**, not MIT-licensed and not
@@ -50,7 +50,7 @@ commit `13b22a8a9f3dfd4a54e72b437bc92344ba879cc0`. Its README identifies the
 sample as LGI-PPGI data. Original dataset:
 <https://github.com/partofthestars/LGI-PPGI-DB>, **CC BY 4.0**.
 Attribution: C.S. Pilz, S. Zaunseder, J. Krajewski, V. Blazek,
-*Local Group Invariance for Heart Rate Estimation from Face Videos in the Wild*,
+_Local Group Invariance for Heart Rate Estimation from Face Videos in the Wild_,
 CVPR Workshops, 2018, pp.1254–1262.
 License: <https://creativecommons.org/licenses/by/4.0/>. Unmodified source.
 The original dataset's README currently reports its full-session downloads
