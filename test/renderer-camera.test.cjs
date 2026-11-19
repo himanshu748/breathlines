@@ -4,7 +4,7 @@ const vm = require('node:vm');
 const fs = require('node:fs');
 const path = require('node:path');
 
-function desk({ onConsent, onReadiness } = {}) {
+function desk({ onConsent, onReadiness, onAcquire } = {}) {
   const elements = new Map();
   const element = (id) => {
     if (!elements.has(id))
@@ -102,6 +102,7 @@ function desk({ onConsent, onReadiness } = {}) {
           assert.equal(consent, true);
           assert.equal(options.audio, false);
           requests.push(options);
+          await onAcquire?.(options);
           const track = {
             label: 'Desk camera',
             stopped: false,
@@ -138,6 +139,33 @@ function desk({ onConsent, onReadiness } = {}) {
     },
   };
 }
+
+test('Prepare recovers from a disappeared selected camera and does not retry denied permission', async () => {
+  const d = desk({
+    onAcquire: (options) => {
+      if (options.video.deviceId?.exact === 'removed-camera')
+        throw Object.assign(new Error('Camera removed'), {
+          name: 'OverconstrainedError',
+        });
+    },
+  });
+  await d.element('consent-next').onclick();
+  d.element('camera-picker').value = 'removed-camera';
+  await d.run('prepare()');
+  assert.equal(d.requests.length, 2);
+  assert.equal(d.requests[1].video.deviceId, undefined);
+  assert.equal(d.element('camera-picker').value, 'browser-id');
+  assert.equal(d.element('camera-setup').hidden, false);
+  const denied = desk({
+    onAcquire: () => {
+      throw Object.assign(new Error('Denied'), { name: 'NotAllowedError' });
+    },
+  });
+  await denied.element('consent-next').onclick();
+  denied.element('camera-picker').value = 'removed-camera';
+  await denied.run('prepare()');
+  assert.equal(denied.requests.length, 1);
+});
 
 test('Stop does not claim CAMERA OFF or reopen preview before native readiness releases the camera', async () => {
   let release, finishProbe;

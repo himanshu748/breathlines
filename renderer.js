@@ -275,16 +275,31 @@ function selectedTransform() {
 async function openPreview(token) {
   stream?.getTracks().forEach((track) => track.stop());
   stream = null;
-  const deviceId = $('camera-picker').value;
-  const next = await navigator.mediaDevices.getUserMedia({
-    audio: false,
-    video: {
-      width: { ideal: 1280 },
-      height: { ideal: 720 },
-      frameRate: { ideal: 30 },
-      ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
-    },
-  });
+  let deviceId = $('camera-picker').value;
+  const acquire = () =>
+    navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: {
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        frameRate: { ideal: 30 },
+        ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
+      },
+    });
+  let next;
+  try {
+    next = await acquire();
+  } catch (error) {
+    if (
+      !deviceId ||
+      !['NotFoundError', 'OverconstrainedError'].includes(error.name) ||
+      token !== generation
+    )
+      throw error;
+    deviceId = '';
+    $('camera-picker').value = '';
+    next = await acquire();
+  }
   if (token !== generation) {
     next.getTracks().forEach((track) => track.stop());
     return;
