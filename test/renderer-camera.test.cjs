@@ -158,6 +158,8 @@ test('camera consent precedes preview; readiness releases tracks; selected rotat
   // Click handlers intentionally fire-and-forget; let the start continuation run.
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(d.sessions[0].started, true);
+  assert.equal(d.element('start').hidden, true);
+  assert.equal(d.element('start').disabled, true);
   assert.equal(d.sessions[0].transform, 1);
   d.element('writing').value = 'Unfinished words';
   d.run("manuscript.finish('A finished line', {}, false)");
@@ -169,6 +171,29 @@ test('camera consent precedes preview; readiness releases tracks; selected rotat
   assert.equal(d.element('fallback').hidden, false);
   assert.ok(d.tracks.every((track) => track.stopped));
   assert.equal(d.sessions[0].destroyed, true);
+  assert.equal(d.element('start').hidden, false);
+  assert.equal(d.element('start').disabled, false);
+});
+
+test('renderer carries partial words, flushes on typed spaces, and cancels pending breaks on stop', async () => {
+  const d = desk();
+  d.element('writing').value = 'Between t';
+  d.run('finish()');
+  assert.equal(d.run('manuscript.lines[0].text'), 'Between');
+  assert.equal(d.element('writing').value, 't');
+  d.element('writing').value = 'these';
+  d.run('finish()');
+  assert.equal(d.run('manuscript.lines.length'), 1);
+  d.element('writing').value = 'these ';
+  d.element('writing').oninput();
+  assert.equal(d.run('manuscript.lines[1].text'), 'these');
+  assert.equal(d.element('writing').value, '');
+  d.element('writing').value = 'unfinished';
+  d.run('finish()');
+  await d.run('stop()');
+  d.element('writing').value = 'unfinished ';
+  d.element('writing').oninput();
+  assert.equal(d.run('manuscript.lines.length'), 2);
 });
 
 test('weak readiness shows reason, blocked full mode stays disabled, breathing-only checks exact bundle', async () => {

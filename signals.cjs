@@ -236,6 +236,43 @@ function marginalia(metrics, elapsedMs) {
         : null,
   };
 }
+class WordBoundaryBreak {
+  constructor(timeoutMs = 1500) {
+    this.timeoutMs = timeoutMs;
+    this.pending = null;
+  }
+  request(text, time, notes) {
+    if (this.pending) return this.update(text, time);
+    if (!text.trim() || !Number.isFinite(time)) return null;
+    this.pending = {
+      deadline: time + this.timeoutMs,
+      notes: structuredClone(notes),
+    };
+    const match = /^(.*\S)\s+(\S*)$/s.exec(text.trimStart());
+    if (match) return this.complete(match[1], match[2]);
+    return null;
+  }
+  update(text, time) {
+    if (!this.pending) return null;
+    // Expire the request, not the word: a timeout must never cut a token in half.
+    if (
+      !text.trim() ||
+      !Number.isFinite(time) ||
+      time >= this.pending.deadline
+    ) {
+      this.pending = null;
+      return null;
+    }
+    const match = /^(\S+)\s+([\s\S]*)$/.exec(text.trimStart());
+    return match ? this.complete(match[1], match[2]) : null;
+  }
+  complete(text, remainder) {
+    const notes = this.pending.notes;
+    this.pending = null;
+    return { text, remainder, notes };
+  }
+}
+
 class Manuscript {
   constructor() {
     this.lines = [];
@@ -268,4 +305,5 @@ module.exports = {
   eyeOpenness,
   EyeClosureDetector,
   DoubleBlinkDetector,
+  WordBoundaryBreak,
 };

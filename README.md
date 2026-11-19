@@ -62,7 +62,10 @@ vitals or pretends to detect breath without the SDK.
 3. Enter the desk, then explicitly click **Prepare camera**. Consent alone does
    not acquire the camera. Place your face and upper chest in even light.
 4. Choose the camera/rotation, check readiness, and choose a measurement mode.
-   Type. Enter intentionally does not insert a line break; pasted newlines are
+   Type. Exhales break at the last whitespace, carrying any unfinished word
+   forward. A single-word draft waits up to 1.5 seconds for a space; if none
+   arrives, that break request expires without cutting the word. Enter
+   intentionally does not insert a line break; pasted newlines are
    flattened. The SDK's chest waveform provides the breaks. Finished lines are
    immutable; the current line remains editable. There is no manual/simulated
    sensor bypass.

@@ -17,10 +17,12 @@ const {
   timestampMs,
   EyeClosureDetector,
   DoubleBlinkDetector,
+  WordBoundaryBreak,
 } = require('./signals.cjs');
 const { nextRecovery } = require('./recovery.cjs');
 const $ = (id) => document.getElementById(id);
 const manuscript = new Manuscript();
+const wordBreak = new WordBoundaryBreak();
 let breath = new ExhaleDetector(),
   blink = new DoubleBlinkDetector(),
   eyes = new EyeClosureDetector();
@@ -134,14 +136,27 @@ function renderLines() {
     '0',
   );
 }
-function finish(stanza = false) {
-  if (manuscript.finish($('writing').value, notes, stanza)) {
-    $('writing').value = '';
+function commitBreak(text, remainder, lineNotes, stanza = false) {
+  if (manuscript.finish(text, lineNotes, stanza)) {
+    $('writing').value = remainder;
     renderLines();
     feedback(
       stanza ? 'A stanza, held in a blink.' : 'A line, held in an exhale.',
     );
   } else if (stanza) feedback('A little space before the next line.');
+}
+function finish(stanza = false) {
+  if (stanza) {
+    wordBreak.pending = null;
+    commitBreak($('writing').value, '', notes, true);
+    return;
+  }
+  const result = wordBreak.request($('writing').value, Date.now(), notes);
+  if (result) commitBreak(result.text, result.remainder, result.notes);
+}
+function flushWordBreak() {
+  const result = wordBreak.update($('writing').value, Date.now());
+  if (result) commitBreak(result.text, result.remainder, result.notes);
 }
 function renderValues() {
   const fields = [
@@ -365,6 +380,7 @@ async function checkReadiness(breathingOnly = false) {
 }
 async function stop() {
   generation++;
+  wordBreak.pending = null;
   starting = false;
   const previous = sdk;
   sdk = null;
@@ -375,6 +391,7 @@ async function stop() {
   $('camera-setup').hidden = true;
   $('session-tag').textContent = 'CAMERA OFF';
   $('start').disabled = false;
+  $('start').hidden = false;
   $('status').textContent = 'Camera stopped. Your words are still here.';
   for (const key of Object.keys(cache)) delete cache[key];
   refreshNotes();
@@ -404,6 +421,7 @@ async function start(breathingOnly = false, excluded = []) {
   }
   starting = true;
   $('start').disabled = true;
+  $('start').hidden = true;
   $('error').hidden = true;
   $('fallback').hidden = true;
   const token = ++generation;
@@ -579,6 +597,7 @@ $('writing').onkeydown = (e) => {
 };
 $('writing').oninput = () => {
   $('writing').value = $('writing').value.replace(/[\r\n]+/g, ' ');
+  flushWordBreak();
 };
 function exportLines() {
   return [
@@ -727,6 +746,7 @@ $('date').textContent = new Date()
   })
   .toUpperCase();
 setInterval(refreshNotes, 1000);
+setInterval(flushWordBreak, 100);
 renderValues();
 draw('breath-wave', []);
 draw('pulse-wave', []);

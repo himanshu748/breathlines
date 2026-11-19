@@ -5,7 +5,64 @@ const {
   BlinkDetector,
   marginalia,
   Manuscript,
+  WordBoundaryBreak,
 } = require('../signals.cjs');
+
+test('exhale boundaries carry only the unfinished trailing word', () => {
+  const boundary = new WordBoundaryBreak();
+  const notes = { pulse: { value: 70 } };
+  assert.deepEqual(boundary.request('Between t', 0, notes), {
+    text: 'Between',
+    remainder: 't',
+    notes,
+  });
+  assert.deepEqual(boundary.request('these small returns li', 1, notes), {
+    text: 'these small returns',
+    remainder: 'li',
+    notes,
+  });
+  assert.deepEqual(boundary.request('  a complete line  ', 2, notes), {
+    text: 'a complete line',
+    remainder: '',
+    notes,
+  });
+  assert.deepEqual(boundary.request('one\ttwo\u2003three', 3, notes), {
+    text: 'one\ttwo',
+    remainder: 'three',
+    notes,
+  });
+});
+
+test('a one-word draft waits for the next typed space and keeps exhale marginalia', () => {
+  const boundary = new WordBoundaryBreak();
+  const notes = { pulse: { value: 70 } };
+  assert.equal(boundary.request('bre', 0, notes), null);
+  notes.pulse.value = 90;
+  assert.equal(boundary.update('breathe', 500), null);
+  assert.deepEqual(boundary.update('breathe next words', 600), {
+    text: 'breathe',
+    remainder: 'next words',
+    notes: { pulse: { value: 70 } },
+  });
+  assert.equal(boundary.update('next words', 700), null);
+});
+
+test('empty, deleted and invalid drafts cannot create pending breaks; a timeout never splits a word', () => {
+  const boundary = new WordBoundaryBreak();
+  assert.equal(boundary.request('  ', 0, {}), null);
+  assert.equal(boundary.pending, null);
+  assert.equal(boundary.request('word', NaN, {}), null);
+  boundary.request('par', 0, {});
+  assert.equal(boundary.update('partial', 1500), null);
+  assert.equal(boundary.pending, null);
+  assert.equal(boundary.update('partial ', 1600), null);
+  boundary.request('deleted', 2000, {});
+  assert.equal(boundary.update('', 2100), null);
+  assert.equal(boundary.pending, null);
+  boundary.request('single', 3000, {});
+  assert.equal(boundary.request('single', 4000, {}), null);
+  assert.equal(boundary.pending.deadline, 4500);
+});
 test('smooth noisy breathing yields one break per trough, not per sample', () => {
   const d = new ExhaleDetector();
   const hits = [];
