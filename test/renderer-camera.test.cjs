@@ -4,7 +4,7 @@ const vm = require('node:vm');
 const fs = require('node:fs');
 const path = require('node:path');
 
-function desk() {
+function desk({ onConsent, onReadiness } = {}) {
   const elements = new Map();
   const element = (id) => {
     if (!elements.has(id))
@@ -84,12 +84,14 @@ function desk() {
       breathlines: {
         consent: async (value) => {
           consent = value;
+          await onConsent?.(value);
         },
         key: async () => '',
         readiness: async (options) => {
           assert.equal(consent, true);
           assert.ok(tracks.every((track) => track.stopped));
           checks.push(options);
+          if (onReadiness) return onReadiness(options);
           return { verdict, reason: 'Measured camera capability' };
         },
       },
@@ -136,6 +138,35 @@ function desk() {
     },
   };
 }
+
+test('Stop does not claim CAMERA OFF or reopen preview before native readiness releases the camera', async () => {
+  let release, finishProbe;
+  const d = desk({
+    onConsent: (value) =>
+      !value && finishProbe
+        ? new Promise((resolve) => {
+            release = resolve;
+          })
+        : undefined,
+    onReadiness: () =>
+      new Promise((resolve) => {
+        finishProbe = resolve;
+      }),
+  });
+  await d.element('consent-next').onclick();
+  await d.run('prepare()');
+  const pending = d.run('checkReadiness()');
+  const stopping = d.run('stop()');
+  assert.equal(d.element('session-tag').textContent, 'STOPPING CAMERA');
+  assert.equal(d.element('start').disabled, true);
+  finishProbe({ verdict: 'ready', reason: 'Done' });
+  await pending;
+  assert.equal(d.requests.length, 1);
+  assert.equal(d.element('session-tag').textContent, 'STOPPING CAMERA');
+  release();
+  await stopping;
+  assert.equal(d.element('session-tag').textContent, 'CAMERA OFF');
+});
 
 test('camera consent precedes preview; readiness releases tracks; selected rotation reaches measurement; low FPS preserves draft', async () => {
   const d = desk();

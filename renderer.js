@@ -346,7 +346,7 @@ async function checkReadiness(breathingOnly = false) {
     $(id).disabled = true;
   $('measurement-options').hidden = true;
   $('readiness-result').textContent =
-    'Checking camera readiness… Stop camera cancels this check.';
+    'Checking camera readiness… Stop camera waits for the native probe to release the camera.';
   $('session-tag').textContent = 'CAMERA CHECK · NOT MEASURING';
   try {
     const result = await window.breathlines.readiness({
@@ -379,7 +379,7 @@ async function checkReadiness(breathingOnly = false) {
   }
 }
 async function stop() {
-  generation++;
+  const token = ++generation;
   wordBreak.pending = null;
   starting = false;
   const previous = sdk;
@@ -389,10 +389,11 @@ async function stop() {
   $('preview').srcObject = null;
   $('preview-empty').hidden = false;
   $('camera-setup').hidden = true;
-  $('session-tag').textContent = 'CAMERA OFF';
-  $('start').disabled = false;
+  $('session-tag').textContent = 'STOPPING CAMERA';
+  $('start').disabled = true;
   $('start').hidden = false;
-  $('status').textContent = 'Camera stopped. Your words are still here.';
+  $('status').textContent =
+    'Waiting for camera release. A native readiness probe must finish before the camera is off.';
   for (const key of Object.keys(cache)) delete cache[key];
   refreshNotes();
   await window.breathlines.consent(false);
@@ -404,6 +405,10 @@ async function stop() {
       await previous.destroy();
     } catch {}
   }
+  if (token !== generation) return;
+  $('session-tag').textContent = 'CAMERA OFF';
+  $('start').disabled = false;
+  $('status').textContent = 'Camera stopped. Your words are still here.';
 }
 async function start(breathingOnly = false, excluded = []) {
   if (starting || checking || sdk || !stream) return;

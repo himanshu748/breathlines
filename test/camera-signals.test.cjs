@@ -141,7 +141,7 @@ test('readiness uses native camera IDs, exact metric bundles and destroys on eve
   }
 });
 
-test('unmatched cameras and native errors are inconclusive; cancellation stops the probe', async () => {
+test('unmatched cameras and native errors are inconclusive; cancellation waits for probe teardown', async () => {
   let custom = false,
     destroyed = 0,
     checked = 0,
@@ -160,7 +160,7 @@ test('unmatched cameras and native errors are inconclusive; cancellation stops t
       });
     }
     async stopAsync() {
-      stop({ verdict: 'inconclusive' });
+      throw new Error('Measurement stop cannot cancel readiness');
     }
     async destroy() {
       destroyed++;
@@ -176,7 +176,14 @@ test('unmatched cameras and native errors are inconclusive; cancellation stops t
     check.check({ cameraName: 'Unknown' }),
     /already running/,
   );
-  await check.cancel();
+  let cancelled = false;
+  const cancellation = check.cancel().then(() => {
+    cancelled = true;
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(cancelled, false);
+  stop({ verdict: 'inconclusive' });
+  await cancellation;
   assert.equal((await pending).verdict, 'inconclusive');
   assert.equal(custom, true);
   assert.equal(checked, 1);
@@ -189,4 +196,43 @@ test('unmatched cameras and native errors are inconclusive; cancellation stops t
     /No camera access/,
   );
   assert.equal(destroyed, 2);
+});
+
+test('native-camera Stop waits for readiness and destroy to release the camera', async () => {
+  let finishProbe, finishDestroy;
+  class SDK {
+    static availableCameras() {
+      return [{ id: 'native', name: 'Desk' }];
+    }
+    useCamera() {}
+    checkDeviceReadiness() {
+      return new Promise((resolve) => {
+        finishProbe = resolve;
+      });
+    }
+    destroy() {
+      return new Promise((resolve) => {
+        finishDestroy = resolve;
+      });
+    }
+  }
+  const check = createReadiness(
+    SDK,
+    { byId: (id) => id },
+    { breathingMetrics: [], cardioMetrics: [], faceMetrics: [] },
+  );
+  const pending = check.check({ cameraName: 'Desk' });
+  let released = false;
+  const stopping = check.cancel().then(() => {
+    released = true;
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(released, false);
+  finishProbe({ verdict: 'ready', reason: 'Done' });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(released, false);
+  finishDestroy();
+  await Promise.all([pending, stopping]);
+  assert.equal(released, true);
+  await check.cancel();
 });

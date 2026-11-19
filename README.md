@@ -173,8 +173,11 @@ After consent, enter the desk and click **Prepare camera**. This opens only a
 preview, then enumerates permission-revealed cameras. Select a chest-visible
 webcam and rotation, then **Check readiness**. Measurement does not start until
 you choose full signals or breathing only. A breathing-only choice checks that
-configuration again before starting. Stop camera cancels preparation/checks as
-well as measurement; unfinished writing and finished lines are preserved.
+configuration again before starting. Stop camera cancels preparation and stops
+measurement; during native readiness it displays STOPPING CAMERA until the
+probe and teardown finish. SDK 3.5.0 has no public readiness abort API, so the
+desk does not claim CAMERA OFF or reopen capture before release. Unfinished
+writing and finished lines are preserved.
 
 Readiness runs in the main process with the same key, telemetry preference and
 requested metrics. It temporarily releases the browser preview so native capture

@@ -2,7 +2,7 @@ function createReadiness(SDK, CameraSelection, bundles) {
   let active = null;
   return {
     async cancel() {
-      await active?.stopAsync();
+      await active?.done;
     },
     async check({
       apiKey,
@@ -23,7 +23,12 @@ function createReadiness(SDK, CameraSelection, bundles) {
               ...bundles.faceMetrics,
             ],
       });
-      active = sdk;
+      let release;
+      active = {
+        done: new Promise((resolve) => {
+          release = resolve;
+        }),
+      };
       try {
         const cameras = SDK.availableCameras().filter(
           (item) => item.name === cameraName,
@@ -57,6 +62,7 @@ function createReadiness(SDK, CameraSelection, bundles) {
           await sdk.destroy();
         } finally {
           active = null;
+          release();
         }
       }
     },
