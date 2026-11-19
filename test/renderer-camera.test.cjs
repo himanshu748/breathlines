@@ -255,6 +255,35 @@ test('renderer carries partial words, flushes on typed spaces, and cancels pendi
   assert.equal(d.run('manuscript.lines.length'), 2);
 });
 
+test('stanza gestures preserve words, deferred stanza flags, empty stanza requests and Stop cancellation', async () => {
+  const d = desk();
+  d.element('writing').value = 'Between t';
+  d.run('finish(true)');
+  assert.equal(d.run('manuscript.lines[0].text'), 'Between');
+  assert.equal(d.element('writing').value, 't');
+  assert.equal(d.run('manuscript.pendingStanza'), true);
+  d.element('writing').value = 'these';
+  d.run('finish(true)');
+  d.run('finish()');
+  assert.equal(d.run('manuscript.lines.length'), 1);
+  assert.equal(d.run('wordBreak.pending.stanza'), true);
+  d.element('writing').value = 'these ';
+  d.element('writing').oninput();
+  assert.equal(d.run('manuscript.lines[1].text'), 'these');
+  assert.equal(d.run('manuscript.lines[1].stanza'), true);
+  assert.equal(d.run('manuscript.pendingStanza'), true);
+  d.run('finish(true)');
+  assert.equal(d.run('manuscript.lines.length'), 2);
+  assert.equal(d.run('manuscript.pendingStanza'), true);
+  d.element('writing').value = 'unfinished';
+  d.run('finish(true)');
+  await d.run('stop()');
+  assert.equal(d.run('wordBreak.pending'), null);
+  d.element('writing').value = 'unfinished ';
+  d.element('writing').oninput();
+  assert.equal(d.run('manuscript.lines.length'), 2);
+});
+
 test('weak readiness shows reason, blocked full mode stays disabled, breathing-only checks exact bundle', async () => {
   const d = desk();
   await d.element('consent-next').onclick();

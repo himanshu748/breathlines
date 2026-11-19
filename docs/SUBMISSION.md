@@ -56,7 +56,7 @@ Camera consent precedes preparation; consenting alone does not open the camera. 
 
 **AI use:** Breathlines was built with Devin, an AI coding agent. The app itself runs no generative AI and sends no writing to a generative-AI service. SmartSpectra's signal-estimation models are distinct from text generation.
 
-Stanza gestures have a separate limitation: unlike exhale breaks, they commit the current draft immediately and can interrupt a word. The demo is edited to shorten setup and later writing; it does not synthesize signals.
+Stanza gestures use the same word-boundary handling and deferred-break timeout as exhales. The demo is edited to shorten setup and later writing; it does not synthesize signals.
 
 ## Agent Session
 

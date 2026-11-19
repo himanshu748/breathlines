@@ -12,9 +12,9 @@ an explicit HTML export.
 Setup/warm-up and later writing are shortened with cuts; signals are not synthesized.
 The video is silent and uses explanatory captions.
 
-Known writing limitation: exhale breaks preserve words, but a blink/eye-closure
-stanza gesture commits the current draft immediately and can interrupt a word.
-This separate gesture path is not changed by the camera-recovery fix.
+Blink/eye-closure stanza gestures use the same word-boundary handling and
+1.5-second deferred-break timeout as exhales, retaining the stanza request
+until the pending break completes or expires.
 
 **Demo media license (separate from the MIT app): CC BY-NC-SA 2.5.** Face footage:
 Dan Gillmor / Center for Citizen Media, _Jimmy Wales on Collective Intelligence_,

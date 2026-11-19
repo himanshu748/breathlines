@@ -15,21 +15,25 @@ test('exhale boundaries carry only the unfinished trailing word', () => {
     text: 'Between',
     remainder: 't',
     notes,
+    stanza: false,
   });
   assert.deepEqual(boundary.request('these small returns li', 1, notes), {
     text: 'these small returns',
     remainder: 'li',
     notes,
+    stanza: false,
   });
   assert.deepEqual(boundary.request('  a complete line  ', 2, notes), {
     text: 'a complete line',
     remainder: '',
     notes,
+    stanza: false,
   });
   assert.deepEqual(boundary.request('one\ttwo\u2003three', 3, notes), {
     text: 'one\ttwo',
     remainder: 'three',
     notes,
+    stanza: false,
   });
 });
 
@@ -43,6 +47,7 @@ test('a one-word draft waits for the next typed space and keeps exhale marginali
     text: 'breathe',
     remainder: 'next words',
     notes: { pulse: { value: 70 } },
+    stanza: false,
   });
   assert.equal(boundary.update('next words', 700), null);
 });
@@ -63,6 +68,50 @@ test('empty, deleted and invalid drafts cannot create pending breaks; a timeout 
   assert.equal(boundary.request('single', 4000, {}), null);
   assert.equal(boundary.pending.deadline, 4500);
 });
+test('stanza boundaries carry partial words and retain the flag across pending exhales', () => {
+  const boundary = new WordBoundaryBreak();
+  const notes = { pulse: { value: 70 } };
+  assert.deepEqual(boundary.request('Between t', 0, notes, true), {
+    text: 'Between',
+    remainder: 't',
+    notes,
+    stanza: true,
+  });
+  assert.equal(boundary.request('bre', 10, notes), null);
+  assert.equal(boundary.request('breat', 100, notes, true), null);
+  assert.equal(boundary.pending.deadline, 1510);
+  notes.pulse.value = 90;
+  assert.deepEqual(boundary.request('breathe next', 200, notes), {
+    text: 'breathe',
+    remainder: 'next',
+    notes: { pulse: { value: 70 } },
+    stanza: true,
+  });
+});
+
+test('pending stanza waits for a space and expires without cutting or leaking its flag', () => {
+  const boundary = new WordBoundaryBreak();
+  assert.equal(boundary.request('par', 0, {}, true), null);
+  assert.equal(boundary.update('partial', 500), null);
+  assert.deepEqual(boundary.update('partial ', 600), {
+    text: 'partial',
+    remainder: '',
+    notes: {},
+    stanza: true,
+  });
+  assert.equal(boundary.request('word', 1000, {}, true), null);
+  assert.equal(boundary.update('word', 2500), null);
+  assert.equal(boundary.pending, null);
+  assert.equal(boundary.request(' ', 3000, {}, true), null);
+  assert.equal(boundary.request('word', NaN, {}, true), null);
+  assert.deepEqual(boundary.request('next word', 3000, {}), {
+    text: 'next',
+    remainder: 'word',
+    notes: {},
+    stanza: false,
+  });
+});
+
 test('smooth noisy breathing yields one break per trough, not per sample', () => {
   const d = new ExhaleDetector();
   const hits = [];

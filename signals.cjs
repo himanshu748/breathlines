@@ -241,12 +241,16 @@ class WordBoundaryBreak {
     this.timeoutMs = timeoutMs;
     this.pending = null;
   }
-  request(text, time, notes) {
-    if (this.pending) return this.update(text, time);
+  request(text, time, notes, stanza = false) {
+    if (this.pending) {
+      this.pending.stanza ||= stanza;
+      return this.update(text, time);
+    }
     if (!text.trim() || !Number.isFinite(time)) return null;
     this.pending = {
       deadline: time + this.timeoutMs,
       notes: structuredClone(notes),
+      stanza,
     };
     const match = /^(.*\S)\s+(\S*)$/s.exec(text.trimStart());
     if (match) return this.complete(match[1], match[2]);
@@ -267,9 +271,9 @@ class WordBoundaryBreak {
     return match ? this.complete(match[1], match[2]) : null;
   }
   complete(text, remainder) {
-    const notes = this.pending.notes;
+    const { notes, stanza } = this.pending;
     this.pending = null;
-    return { text, remainder, notes };
+    return { text, remainder, notes, stanza };
   }
 }
 

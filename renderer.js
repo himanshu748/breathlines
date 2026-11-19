@@ -147,17 +147,23 @@ function commitBreak(text, remainder, lineNotes, stanza = false) {
   } else if (stanza) feedback('A little space before the next line.');
 }
 function finish(stanza = false) {
-  if (stanza) {
-    wordBreak.pending = null;
-    commitBreak($('writing').value, '', notes, true);
+  if (stanza && !$('writing').value.trim()) {
+    commitBreak('', '', notes, true);
     return;
   }
-  const result = wordBreak.request($('writing').value, Date.now(), notes);
-  if (result) commitBreak(result.text, result.remainder, result.notes);
+  const result = wordBreak.request(
+    $('writing').value,
+    Date.now(),
+    notes,
+    stanza,
+  );
+  if (result)
+    commitBreak(result.text, result.remainder, result.notes, result.stanza);
 }
 function flushWordBreak() {
   const result = wordBreak.update($('writing').value, Date.now());
-  if (result) commitBreak(result.text, result.remainder, result.notes);
+  if (result)
+    commitBreak(result.text, result.remainder, result.notes, result.stanza);
 }
 function renderValues() {
   const fields = [
