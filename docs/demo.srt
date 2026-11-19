@@ -1,0 +1,61 @@
+1
+00:00:00,000 --> 00:00:05,000
+Breathlines is a writing desk.
+Your breath sets the line breaks.
+
+2
+00:00:05,000 --> 00:00:10,000
+Consent first: camera estimates,
+not medical measurements. Telemetry stays off.
+
+3
+00:00:10,000 --> 00:00:16,500
+Pick and rotate your camera, then run
+SmartSpectra three point five device readiness.
+
+4
+00:00:16,500 --> 00:00:19,400
+This test camera is inconclusive.
+
+5
+00:00:19,400 --> 00:00:26,000
+The face is a Creative Commons interview clip,
+used as a stand-in webcam.
+
+6
+00:00:26,000 --> 00:00:28,500
+SmartSpectra processes its signals in real time.
+
+7
+00:00:28,500 --> 00:00:35,000
+Type without Enter. Each exhale ends a line
+at a word boundary,
+
+8
+00:00:35,000 --> 00:00:37,000
+carrying unfinished words forward.
+
+9
+00:00:37,000 --> 00:00:43,000
+The live panel shows the chest waveform,
+pulse, and breathing rate.
+
+10
+00:00:43,000 --> 00:00:48,000
+A double blink or long eye closure
+can request a new stanza.
+
+11
+00:00:48,000 --> 00:00:52,000
+The margin records pulse, breaths,
+expression, and talking.
+
+12
+00:00:52,000 --> 00:00:56,000
+Click Stop.
+Camera off, writing preserved.
+
+13
+00:00:56,000 --> 00:01:02,000
+Export to HTML or PNG
+when you're ready to save.

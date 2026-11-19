@@ -10,7 +10,9 @@ simulated readings. Typing uses no Enter; exhale-triggered breaks preserve words
 Fake-camera native readiness is inconclusive. The recording includes Stop and
 an explicit HTML export.
 Setup/warm-up and later writing are shortened with cuts; signals are not synthesized.
-The video is silent and uses explanatory captions.
+The video has English neural narration and matching burned-in captions; the
+[timed script and voice credits](docs/demo-narration.md) and
+[SRT captions](docs/demo.srt) are included.
 
 Blink/eye-closure stanza gestures use the same word-boundary handling and
 1.5-second deferred-break timeout as exhales, retaining the stanza request
