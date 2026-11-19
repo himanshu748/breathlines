@@ -10,12 +10,12 @@ amount of setup/warm-up time is removed; the live signals are not synthesized.
 | 00:05–00:10     | Consent                   | Consent first: camera estimates, not medical measurements. Telemetry stays off.                                            |
 | 00:10–00:19.4   | Preparation and readiness | Pick and rotate your camera, then run SmartSpectra three point five device readiness. This test camera is inconclusive.    |
 | 00:19.4–00:28.5 | Input disclosure          | The face is a Creative Commons interview clip, used as a stand-in webcam. SmartSpectra processes its signals in real time. |
-| 00:28.5–00:37   | Writing                   | Type without Enter. Each exhale ends a line at a word boundary, carrying unfinished words forward.                         |
-| 00:37–00:43     | Live panel                | The live panel shows the chest waveform, pulse, and breathing rate.                                                        |
-| 00:43–00:48     | Stanzas                   | A double blink or long eye closure can request a new stanza.                                                               |
-| 00:48–00:52     | Marginalia                | The margin records pulse, breaths, expression, and talking.                                                                |
-| 00:52–00:56     | Stop                      | Click Stop. Camera off, writing preserved.                                                                                 |
-| 00:56–01:02     | Export                    | Export to HTML or PNG when you're ready to save.                                                                           |
+| 00:28.5–00:35   | Writing                   | Type without Enter. Each exhale ends a line at a word boundary, carrying unfinished words forward.                         |
+| 00:35–00:41     | Live panel                | The live panel shows the chest waveform, pulse, and breathing rate.                                                        |
+| 00:41–00:45     | Marginalia                | The margin records pulse, breaths, expression, and talking.                                                                |
+| 00:45–00:49     | Stanzas                   | A double blink or long eye closure can request a new stanza.                                                               |
+| 00:49–00:52.5   | Stop                      | Click Stop. Camera off, writing preserved.                                                                                 |
+| 00:52.5–01:02   | Export                    | Export to HTML or PNG when you're ready to save.                                                                           |
 
 ## Voice and licenses
 
