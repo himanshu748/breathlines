@@ -16,15 +16,15 @@ The result is a manuscript with a small living margin: available pulse, breathin
 
 ## Demo
 
-[Watch the demo](https://github.com/himanshu748/breathlines/blob/main/docs/demo.mp4) · [Animated preview](https://github.com/himanshu748/breathlines/blob/main/docs/demo.webp)
+**Live demo placeholder:** Himanshu's own live webcam recording, made per the [60-second shot list](https://github.com/himanshu748/breathlines/blob/main/docs/SHOT_LIST.md), goes here. It must show live SmartSpectra signals; the recording is still to be added.
 
-[Record your own webcam demo: 60-second shot list](https://github.com/himanshu748/breathlines/blob/main/docs/SHOT_LIST.md).
+<!-- Before publishing on DEV, upload Himanshu's live webcam recording to a public host and replace this comment with its video embed. Do not use docs/demo.mp4 as the live demo. -->
 
-<!-- Before publishing on DEV, upload the video to a public host and replace this comment with its video embed. -->
+[Supplementary walkthrough on prerecorded input](https://github.com/himanshu748/breathlines/blob/main/docs/demo.mp4) · [Walkthrough preview](https://github.com/himanshu748/breathlines/blob/main/docs/demo.webp)
 
-The recording uses a disclosed prerecorded face clip as Chromium's fake camera, processed by the real SmartSpectra SDK—not simulated metric values. Native camera readiness is inconclusive for that input. The clip demonstrates the interaction, not measurement accuracy or a live participant session.
+This supplementary walkthrough is not the live submission demo. It uses a disclosed prerecorded face clip as Chromium's fake camera, processed by the real SmartSpectra SDK—not simulated metric values. Native camera readiness is inconclusive for that input. It illustrates the interaction, not measurement accuracy or a live participant session.
 
-The demo is shared under CC BY-NC-SA 2.5. Face footage: Dan Gillmor / Center for Citizen Media, _Jimmy Wales on Collective Intelligence_, excerpted, muted and transcoded; see [source and license](https://github.com/himanshu748/breathlines/blob/main/TEST_VIDEO.md). Non-commercial use only; adaptations must retain the same license. No endorsement is implied.
+The supplementary walkthrough is shared under CC BY-NC-SA 2.5. Face footage: Dan Gillmor / Center for Citizen Media, _Jimmy Wales on Collective Intelligence_, excerpted, muted and transcoded; see [source and license](https://github.com/himanshu748/breathlines/blob/main/TEST_VIDEO.md). Non-commercial use only; adaptations must retain the same license. No endorsement is implied.
 
 ## Code
 

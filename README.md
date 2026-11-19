@@ -2,10 +2,15 @@
 
 ## Submission and demo
 
-[DEV submission draft](docs/SUBMISSION.md) · [Demo video](docs/demo.mp4) ·
+[DEV submission draft](docs/SUBMISSION.md) · [Supplementary walkthrough](docs/demo.mp4) ·
 [Animated preview](docs/demo.webp)
 
-The demo uses a prerecorded fake camera with real SmartSpectra processing, not
+The DEV post's live demo will be Himanshu's own webcam recording, made with the
+[60-second recording shot list](docs/SHOT_LIST.md). That recording is still to be
+added; the repository video is only a supplementary walkthrough on prerecorded
+input, not the live submission demo.
+
+The supplementary walkthrough uses a prerecorded fake camera with real SmartSpectra processing, not
 simulated readings. Typing uses no Enter; exhale-triggered breaks preserve words.
 Fake-camera native readiness is inconclusive. The recording includes Stop and
 an explicit HTML export.
